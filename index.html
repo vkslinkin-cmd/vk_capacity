@@ -1,0 +1,1195 @@
+<!doctype html><html lang="ru"><head><meta name="dashboard-fix" content="v68: fast filter recalculation; memoized derived metrics; preserve dashboard calculations, design and layer order"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Capacity Planning 2026</title>
+<style>
+:root{--bg:#f4f6f9;--panel:#fff;--panel2:#eef2f6;--line:#d8e0e9;--text:#243247;--muted:#718096;--accent:#315fc5;--good:#178d66;--warn:#c48828;--bad:#c83f4d;--orange:#e69a2d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 Inter,system-ui,sans-serif}.top{height:62px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 24px;position:sticky;top:0;z-index:20}.brand{font-weight:800}.brand span{font-weight:500;color:var(--muted)}.spacer{flex:1}.theme,.journal-btn,.details-close{padding:8px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;cursor:pointer}.page{max-width:1900px;margin:auto;padding:22px 24px 40px}h1{margin:0;font-size:25px}.sub{color:var(--muted);margin-top:5px}
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0 10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;position:relative;z-index:150}.filter{position:relative}.filter.open{z-index:200}.filter>button{min-width:145px;text-align:left;padding:8px 11px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:8px;cursor:pointer}.menu{display:none;position:absolute;top:calc(100% + 5px);left:0;width:280px;max-width:calc(100vw - 40px);max-height:330px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px;z-index:1000;box-shadow:0 12px 30px rgba(30,55,90,.15)}.filter.open .menu{display:block}.filters .filter[data-k="product"] .menu{left:auto;right:0}.menu input[type=text]{width:100%;padding:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:7px;margin-bottom:7px}.menu-actions{display:flex;gap:6px;margin-bottom:6px}.menu-actions button{font-size:11px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--text);cursor:pointer}.opt{display:flex;gap:7px;padding:5px;font-size:12px}.journal-btn{font-weight:700;color:var(--accent);border-color:var(--accent)}.journal-btn.has{background:#eaf0ff}
+.metrics{display:flex;gap:18px;margin-left:auto;flex-wrap:wrap}.metric span{display:block;font-size:10px;color:var(--muted)}.metric b{font-size:15px}.quick{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:8px}.quick-card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px}.quick-card span{display:block;font-size:10px;color:var(--muted)}.quick-card b{display:block;font-size:18px;margin-top:2px}.quick-card small{color:var(--muted)}
+.board{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px;overflow-x:auto}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.head b{font-size:15px}.head span{font-size:11px;color:var(--muted)}.map{display:grid;grid-template-columns:repeat(12,minmax(92px,1fr));gap:8px;width:100%;min-width:1260px;align-items:stretch}.geo{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:7px;align-items:end;border:1.5px dashed #8ea2b8;border-radius:10px;padding:11px 5px 6px;background:rgba(117,142,170,.035);min-width:0}.geo-label{position:absolute;top:-10px;left:8px;background:var(--panel);border:1px solid #c8d4e2;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700;color:var(--muted)}.map{--load-slot-h:0px}.dc{min-width:0;display:flex;flex-direction:column;justify-content:flex-end}.load-slot{height:var(--load-slot-h);flex:0 0 var(--load-slot-h);display:flex;align-items:flex-start;margin-top:5px}.load-slot>.load{width:100%;min-height:var(--load-slot-h);margin-top:0}.capacity-total{font-size:9px;font-weight:800;color:var(--text);text-align:center;margin-bottom:3px;white-space:nowrap}.dc-head{display:flex;justify-content:space-between;gap:3px;margin-bottom:5px}.dc-head b{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dc-head span{font-size:9px;color:var(--muted)}.vessel{height:var(--vessel-h);border:1px solid #b9c7d7;border-radius:6px 6px 10px 10px;background:var(--panel2);position:relative;overflow:hidden}.vessel.overlimit{border-color:var(--bad);box-shadow:inset 0 0 0 1px rgba(200,63,77,.18)}.load-stack{position:absolute;left:0;right:0;bottom:0;height:var(--load-pct);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;z-index:1}.free-zone{position:absolute;left:0;right:0;top:0;height:var(--free-pct);background:rgba(23,141,102,.15);border-bottom:1px dashed rgba(23,141,102,.55);display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}.free-zone span{font-size:8px;line-height:1;font-weight:800;color:var(--good);white-space:nowrap;text-shadow:0 1px 2px rgba(255,255,255,.75)}.seg{min-height:1px;border-top:1px solid #ffffff66;cursor:grab;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}.seg-label{display:block;padding:0 4px;color:#fff;font-size:8px;line-height:1.1;font-weight:700;text-align:center;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:100%;text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 2px rgba(0,0,0,.45);pointer-events:none}.seg:active{cursor:grabbing}.seg:active{cursor:grabbing}.seg.dragging{opacity:.55;outline:2px solid var(--accent);outline-offset:-2px}.vessel.drop-target{outline:2px dashed var(--accent);outline-offset:3px}.seg.dim{opacity:.12;filter:saturate(.15)}.seg.no-drag{cursor:default}
+.load{margin-top:5px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:7px;font-size:9px;color:var(--muted)}.loadrow{display:flex;justify-content:space-between;gap:4px;align-items:baseline}.loadrow.main{white-space:nowrap;font-size:8px;letter-spacing:-.15px;gap:2px}.loadrow.main span{white-space:nowrap}.loadrow b{font-size:11px}.track{height:5px;background:#dbe3eb;border-radius:99px;overflow:hidden;margin:4px 0 5px}.track i{height:100%;display:block;border-radius:99px}.add{color:var(--accent);font-weight:700}.power{color:var(--good);font-weight:700}.positive{color:var(--good);font-weight:700}.negative{color:var(--bad);font-weight:700}
+.legend{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:13px;padding-top:12px;border-top:1px solid var(--line);max-height:120px;overflow:auto}.legend-title{font-size:11px;color:var(--muted)}.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);font-size:10px;cursor:pointer}.pill.selected{box-shadow:0 0 0 2px #b7cdf5 inset;border-color:#83a9e9}.dot{width:8px;height:8px;border-radius:2px}.note{margin-top:12px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);font-size:10px;color:var(--muted)}.note b{color:var(--text)}
+.details{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:none}.details.show{display:block}.details-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.details-head b{font-size:15px}.sort-btn{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px}.sort-btn span{color:var(--muted);font-size:10px}.summary-product{background:rgba(70,100,145,.045)}.product-table{width:100%;border-collapse:collapse;font-size:11px}.product-table th,.product-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}.product-table th:first-child,.product-table td:first-child{text-align:center;width:42px}.product-table th:nth-child(2),.product-table td:nth-child(2){text-align:left;min-width:260px}.product-table th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel);z-index:2}.product-table tbody tr:hover{background:var(--panel2)}.product-table .plan-cell{background:rgba(230,150,45,.14);font-weight:700;cursor:help}.product-table .cell-value{display:inline-block;min-width:44px}.product-table .cat-total{background:var(--panel2);font-weight:700}.product-tooltip,.cat-tooltip{position:fixed;z-index:1000;display:none;pointer-events:none;max-width:340px;background:#151515;color:#fff;padding:9px 11px;border-radius:8px;font-size:11px;line-height:1.45;box-shadow:0 10px 28px rgba(0,0,0,.28);white-space:pre-line}.product-tooltip.show,.cat-tooltip.show{display:block}
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,25,40,.45);display:none;align-items:center;justify-content:center;z-index:300}.modal-backdrop.show{display:flex}.modal{width:min(430px,calc(100vw - 28px));background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:0 20px 60px rgba(20,40,70,.25)}.modal.wide{width:min(1250px,calc(100vw - 28px));max-height:86vh;overflow:auto}.modal h3{margin:0 0 5px;font-size:16px}.modal p{margin:0 0 14px;color:var(--muted);font-size:12px}.modal label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.modal input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font-size:14px}.modal-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:14px}.modal-actions button{padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);cursor:pointer}.modal-actions .primary{background:var(--accent);border-color:var(--accent);color:#fff}.hint{font-size:10px;color:var(--muted);margin-top:6px}.toast{position:fixed;right:20px;bottom:20px;z-index:1200;display:none;max-width:420px;background:#222;color:#fff;padding:12px 15px;border-radius:9px;box-shadow:0 12px 30px rgba(0,0,0,.25);font-size:12px}.toast.show{display:block}.journal-table{width:100%;border-collapse:collapse;font-size:11px}.journal-table th,.journal-table td{padding:8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:right}.journal-table th:first-child,.journal-table td:first-child,.journal-table th:nth-child(2),.journal-table td:nth-child(2),.journal-table th:nth-child(3),.journal-table td:nth-child(3){text-align:left}.journal-table th{position:sticky;top:0;background:var(--panel);color:var(--muted)}.journal-table .delta-pos{color:var(--good);font-weight:700}.journal-table .delta-neg{color:var(--bad);font-weight:700}.journal-table button{padding:5px 8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:6px;cursor:pointer}.journal-table button:disabled{opacity:.45;cursor:default}
+.scenario-panel{margin-top:12px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px}.scenario-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}.scenario-head b{font-size:13px}.scenario-note{font-size:10px;color:var(--muted)}.scenario-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.scenario-card{border:1px solid var(--line);border-radius:9px;padding:9px;background:var(--panel2);display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:54px}.scenario-card.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}.scenario-card.empty{opacity:.72}.scenario-info b{display:block;font-size:12px}.scenario-info span{font-size:10px;color:var(--muted)}.scenario-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.scenario-actions button{padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);cursor:pointer;font-size:10px}.scenario-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}.scenario-actions button:disabled{opacity:.45;cursor:default}.scenario-preview{margin-top:8px;padding:7px 9px;border-radius:7px;background:rgba(80,110,220,.08);color:var(--accent);font-size:11px;font-weight:700}
+
+@media(max-width:1300px){.quick{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.quick{grid-template-columns:1fr 1fr}.metrics{width:100%;margin-left:0}}
+.dark{--bg:#0d1118;--panel:#151b25;--panel2:#1c2532;--line:#2d3849;--text:#edf3fc;--muted:#92a0b4}.dark .top{background:#111720}.dark .vessel{border-color:#506076}.dark .geo{border-color:#5d708a}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.upload-zone{border:1px dashed var(--line);border-radius:10px;padding:16px;background:var(--panel2)}.upload-zone h4{margin:0 0 10px}.upload-zone input[type=file]{width:100%;margin:8px 0}.json-box{width:100%;height:360px;resize:vertical;font:11px/1.4 ui-monospace,monospace}.data-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}@media(max-width:800px){.upload-grid{grid-template-columns:1fr}}</style>
+<style id="v45-order-kpi-style">
+.loadrow .power.shed-search{color:var(--good)!important;font-weight:800}
+.loadrow .power.cloud-out{color:var(--bad)!important;font-weight:800}
+.order-breakdown td,.order-breakdown th{white-space:nowrap}
+.order-breakdown .order-total-row{font-weight:800;background:var(--soft)}
+</style>
+
+<style id="auth-style">
+#authGate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#f4f6f9}
+#authGate.hidden{display:none}
+.auth-card{width:min(390px,calc(100vw - 32px));background:#fff;border:1px solid #d8e0e9;border-radius:14px;padding:30px;box-shadow:0 18px 60px rgba(36,50,71,.14)}
+.auth-title{font-size:24px;font-weight:700;margin:0 0 7px;color:#243247}
+.auth-subtitle{font-size:14px;color:#718096;margin:0 0 24px}
+.auth-field{margin:0 0 14px}
+.auth-field label{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:#4b5a70}
+.auth-field input{width:100%;height:42px;padding:0 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#243247;font:14px Inter,system-ui,sans-serif;outline:none}
+.auth-field input:focus{border-color:#315fc5;box-shadow:0 0 0 3px rgba(49,95,197,.12)}.auth-password-wrap{position:relative}.auth-password-wrap input{padding-right:44px}.auth-show-password{position:absolute;right:7px;top:5px;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:#718096;cursor:pointer;display:flex;align-items:center;justify-content:center}.auth-show-password:hover{background:#eef2f6;color:#315fc5}.eye-icon{position:relative;width:18px;height:11px;border:2px solid currentColor;border-radius:50%/60%;display:block}.eye-icon:after{content:"";position:absolute;width:5px;height:5px;background:currentColor;border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%)}.auth-show-password.is-hidden .eye-icon:before{content:"";position:absolute;width:22px;height:2px;background:currentColor;left:-4px;top:3px;transform:rotate(45deg);border-radius:2px}
+.auth-button{width:100%;height:42px;border:0;border-radius:8px;background:#315fc5;color:#fff;font-weight:650;cursor:pointer;font-size:14px}
+.auth-button:hover{filter:brightness(.96)}
+.auth-error{min-height:20px;margin:10px 0 0;color:#c83f4d;font-size:13px}
+body.auth-locked>header,body.auth-locked>main,body.auth-locked>.toast,body.auth-locked>.modal-backdrop{display:none!important}
+</style>
+</head><body class="auth-locked">
+<div id="authGate" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <form class="auth-card" id="authForm" autocomplete="on">
+    <h2 class="auth-title" id="authTitle">Вход в Capacity Planning</h2>
+    <p class="auth-subtitle">Введите логин и пароль для доступа к дашборду</p>
+    <div class="auth-field">
+      <label for="authLogin">Логин</label>
+      <input id="authLogin" name="username" type="text" autocomplete="username" required>
+    </div>
+    <div class="auth-field">
+      <label for="authPassword">Пароль</label>
+      <div class="auth-password-wrap"><input id="authPassword" name="password" type="password" autocomplete="current-password" required><button type="button" class="auth-show-password" id="authShowPassword" aria-label="Показать пароль" title="Показать пароль"><span class="eye-icon" aria-hidden="true"></span></button></div>
+    </div>
+    <button class="auth-button" type="submit">Войти</button>
+    <div class="auth-error" id="authError" aria-live="polite"></div>
+  </form>
+</div>
+<header class="top"><div class="brand">capacity <span>/ plan 2026</span></div><div class="spacer"></div><button class="theme" id="theme">Темная тема</button></header>
+<main class="page"><h1>Распределение CPU по датацентрам</h1><div class="sub">Baseline: «Распределение 09.09» + «Выдачи2026_09.10» · категории внутри стаканов</div><section class="filters" id="filters"></section><section class="scenario-panel" id="scenarioPanel"></section><section class="quick" id="quick"></section>
+<section class="board"><div class="head"><b>Allocation map</b><span>AS IS: Распределение 09.09 · План: Выдачи 2026_09.10</span></div><div class="map" id="map"></div><div class="legend" id="legend"></div><div class="note"><b>Источники:</b> AS IS и категории — «Распределение 09.09» — baseline AS IS; «Выдачи2026_09.10» — план и служебные показатели. «Свободно» берётся из строки «Итого без передвижений» файла «Выдачи2026_09.10».</div></section><section class="details" id="details"></section></main>
+<div id="catTooltip" class="cat-tooltip"></div><div id="productTooltip" class="product-tooltip"></div><div id="toast" class="toast"></div>
+<div class="modal-backdrop" id="journalModal"><div class="modal wide"><div class="details-head"><b>Журнал переносов</b><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="journal-btn" id="cancelAllTransfers">Отменить все переносы</button><button class="journal-btn" id="clearJournalHistory">Очистить историю</button><button class="details-close" id="journalClose">Закрыть</button></div></div><div style="overflow:auto"><table class="journal-table"><thead><tr><th>Время</th><th>Объект</th><th>Маршрут</th><th>Ядер</th><th>Источник до</th><th>Приёмник до</th><th>Источник после</th><th>Приёмник после</th><th>Сценарий</th><th>Действие</th></tr></thead><tbody id="journalBody"></tbody></table></div><div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)"><label>Дата файла<br><input id="exportDate" type="date"></label><label>Название сценария<br><input id="exportName" value="scenario"></label><button class="journal-btn" id="exportBtn">Сформировать AS IS-файл</button><button class="details-close" id="exportJournalBtn">Скачать журнал CSV</button></div></div></div>
+<div class="modal-backdrop" id="uploadModal"><div class="modal wide"><div class="details-head"><b>Загрузить данные</b><button class="details-close" id="uploadClose">Закрыть</button></div><div class="upload-grid"><div class="upload-zone"><h4>AS IS</h4><div class="hint">Загрузите CSV-файл AS IS.</div><input id="asisFile" type="file" accept=".csv,text/csv"><button class="journal-btn" id="asisLoadBtn">Загрузить</button><div class="hint" id="asisStatus"></div></div><div class="upload-zone"><h4>Выдачи</h4><div class="hint">Загрузите CSV-файл «Выдачи».</div><input id="planFile" type="file" accept=".csv,text/csv"><button class="journal-btn" id="planLoadBtn">Загрузить</button><div class="hint" id="planStatus"></div></div></div></div></div><div class="modal-backdrop" id="dataModal"><div class="modal wide"><div class="details-head"><b>Исходные данные файла</b><button class="details-close" id="dataClose">Закрыть</button></div><div class="data-actions"><button class="journal-btn" id="jsonDownload">Скачать .json</button><button class="journal-btn" id="jsonUpload">Загрузить данные</button><button class="journal-btn" id="jsonCopy">Скопировать</button><input id="jsonFile" type="file" accept=".json,application/json" style="display:none"></div><textarea class="json-box" id="jsonBox" readonly></textarea></div></div><div class="modal-backdrop" id="moveModal"><div class="modal"><h3 id="moveTitle">Перенос</h3><p id="moveText"></p><label for="moveAmount">Количество ядер</label><input id="moveAmount" type="number" min="1" step="1"><div class="hint" id="moveHint"></div><div class="modal-actions"><button id="moveCancel">Отмена</button><button class="primary" id="moveConfirm">Перенести</button></div></div></div>
+<div class="modal-backdrop" id="adjustModal"><div class="modal"><h3>Корректировка распределения</h3><p>Добавить объём к текущему распределению продукта на выбранном ЦОД.</p><label>Найти продукт</label><input id="adjProductSearch" type="search" placeholder="Начните вводить название продукта…" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);margin-bottom:8px"><label>Выбрать продукт</label><select id="adjProduct" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);margin-bottom:10px"></select><label>ЦОД</label><select id="adjDc" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);margin-bottom:10px"></select><label>Тип влияния на квоту</label><select id="adjEffect" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);margin-bottom:10px"><option value="consume">Потребляет (свободно уменьшается)</option><option value="release">Высвобождает (свободно увеличивается)</option></select><label>Количество ядер (vCPU)</label><input id="adjAmount" type="number" min="1" step="1" placeholder="Например, 5000"><div class="hint" id="adjPreview">Укажите объём для предпросмотра.</div><div class="modal-actions"><button id="adjCancel">Отмена</button><button class="primary" id="adjConfirm">Добавить</button></div></div></div>
+<script>
+const DATA={"dcs":["M100","MEDV","UDOM","PHR1","PHR2","PHR3","PHR4","ICVA","ICVS","GZNK","SDNХ","OSTN"],"current":[81992,176812,165891,223018,172996,149991,104149,80681,34254,45470,45496,1849],"plan":[15700.0,31478.0,25946.0,17258.0,8318.0,19000.0,5150.0,11678.0,2509.0,41678.0,5368.0,0.0],"power":[0,0,0,0,0,0,0,0,0,0,0,0],"free":[44386.0,-29826.0,-15721.0,23612.0,20686.0,-3604.0,32560.0,2721.0,-33.0,-41108.0,3232.0,17.0],"shed":[6600.0,0,6600.0,12000.0,16200.0,6600.0,10900.0,0,0,0,0,0],"cloud":[0,0,0,23612.0,20686.0,-3604.0,32560.0,0,0,0,0,0],"cloudAbs":[0,0,0,23612.0,20686.0,-3604.0,32560.0,0,0,0,0,0],"categories":[{"name":"Other","v":[5070,36674,24432,41234,28568,28340,17392,1926,18333,288,288,1388]},{"name":"Запас","v":[53486,1652,3625,29770,12804,8796,26810,15299,2476,1470,8600,17]},{"name":"ProfileStream","v":[0,8107,35276,5204,11099,38029,9611,3714,1010,0,0,0]},{"name":"VK Видео","v":[0,24852,24542,29175,3329,6310,2832,0,766,0,0,138]},{"name":"VK Музыка","v":[0,696,715,3953,816,30,22,2651,1705,2910,0,0]},{"name":"Лента VK","v":[0,4210,3905,37118,2665,822,1902,32587,2156,35743,374,0]},{"name":"Общие Рекомы","v":[77,5188,7360,6703,553,110,982,538,587,477,0,0]},{"name":"Дзен","v":[6494,15725,4466,7008,9421,0,10389,0,2150,0,0,8]},{"name":"VK Клипы","v":[0,38873,38200,38368,2639,485,1248,640,282,470,846,0]},{"name":"Реклама","v":[0,27783,573,2482,32610,8201,2031,0,1003,0,29747,0]},{"name":"Реклама Ecom","v":[0,8022,1881,1807,18435,11398,9875,0,746,0,14241,0]},{"name":"OK","v":[0,2875,3056,9140,1161,543,0,5582,486,5582,0,0]},{"name":"Поиск на Discovery","v":[0,0,0,581,2293,3276,2056,2044,0,0,0,0]},{"name":"Поиск Bronze Tier","v":[3279,897,4719,2806,38667,33345,36313,27925,512,0,0,0]},{"name":"Поиск по Max","v":[1713,62,2163,206,4610,4582,3608,38,100,0,0,0]},{"name":"Поиск Единое Видео","v":[10336,392,11160,8289,14935,14344,11658,0,3018,0,0,0]}],"products":[{"name":"ЕКП","cat":"Other","a":[404,1532,370,842,361,837,0,0,270,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Discovery Feature Engineering","cat":"Other","a":[12,3193,3668,3902,5563,3864,2814,15,2246,0,0,32],"p":[3700.0,1800.0,1700.0,400.0,100.0,0.0,2400.0,0.0,1100.0,0.0,0.0,0.0],"order":true,"synthetic":false},{"name":"ML-infra","cat":"Other","a":[3331,16261,6839,6454,11349,10768,11175,239,0,0,0,1294],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Контент-система","cat":"Other","a":[0,961,2769,4456,2916,2762,28,0,4448,0,0,13],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Discovery – Запас","cat":"Запас","a":[50000,1522,1681,15830,2639,8566,7818,9023,330,1470,8600,17],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Discovery Рекомендации","cat":"Other","a":[0,1754,2165,1696,1392,648,404,40,1097,0,0,48],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП VK Видео (ProfileStream)","cat":"ProfileStream","a":[0,2792,6572,840,2460,9814,80,916,840,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП VK Видео","cat":"VK Видео","a":[0,24852,24542,29175,3329,6310,2832,0,766,0,0,138],"p":[0.0,5500.0,5500.0,5500.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"order":true,"synthetic":false},{"name":"ЕКП VK Музыка - ProfileStream","cat":"ProfileStream","a":[0,583,2108,2422,128,1487,199,148,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП VK Музыка","cat":"VK Музыка","a":[0,696,715,3953,816,30,22,2651,1705,2910,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Лента ВКонтакте (ProfileStream)","cat":"ProfileStream","a":[0,124,7752,1226,480,7789,7496,83,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Лента ВКонтакте","cat":"Лента VK","a":[0,4210,3905,37118,2665,822,1902,32587,2156,35743,374,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Общие Рекомы - ProfileStream","cat":"ProfileStream","a":[0,0,1114,0,972,0,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Общие Рекомы","cat":"Общие Рекомы","a":[77,5188,7360,6703,553,110,982,538,587,477,0,0],"p":[0.0,5000.0,5000.0,5000.0,2850.0,0.0,2750.0,0.0,500.0,0.0,0.0,0.0],"order":true,"synthetic":false},{"name":"ЕКП Дзен ProfileStream","cat":"ProfileStream","a":[0,612,3371,0,3587,1937,245,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Дзен","cat":"Дзен","a":[6494,15725,4466,7008,9421,0,10389,0,2150,0,0,8],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП VK Клипы ProfileStream","cat":"ProfileStream","a":[0,871,8852,0,740,13265,0,0,170,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП VK Клипы","cat":"VK Клипы","a":[0,38873,38200,38368,2639,485,1248,640,282,470,846,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Реклама Profile Stream","cat":"ProfileStream","a":[0,893,3813,4,941,1293,30,2567,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Реклама","cat":"Реклама","a":[0,27783,573,2482,32610,8201,2031,0,1003,0,29747,0],"p":[0.0,6800.0,0.0,0.0,5000.0,0.0,0.0,0.0,0.0,0.0,5000.0,0.0],"order":true,"synthetic":false},{"name":"ЕКП Реклама Ecom - ProfileStream","cat":"ProfileStream","a":[0,1329,0,0,195,1402,1517,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Реклама Ecom","cat":"Реклама Ecom","a":[0,8022,1881,1807,18435,11398,9875,0,746,0,14241,0],"p":[0.0,10000.0,0.0,0.0,0.0,0.0,0.0,0.0,909.0,0.0,0.0,0.0],"order":true,"synthetic":false},{"name":"ЕКП Лента Одноклассники Profile Stream","cat":"ProfileStream","a":[0,903,1694,712,1596,1042,44,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Лента Одноклассники","cat":"OK","a":[0,2875,3056,9140,1161,543,0,5582,486,5582,0,0],"p":[0.0,0.0,0.0,2250.0,0.0,0.0,0.0,3150.0,0.0,2250.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Service Host","cat":"Other","a":[323,243,189,475,164,97,106,80,73,80,80,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Реком Core","cat":"Other","a":[0,2264,1244,12900,102,0,0,0,9160,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Инфра","cat":"Other","a":[0,6082,4623,3650,2092,1097,338,576,0,208,208,1],"p":[0.0,2378.0,1746.0,3008.0,368.0,0.0,0.0,1328.0,0.0,2228.0,368.0,0.0],"order":true,"synthetic":false},{"name":"Виртуалки","cat":"Other","a":[0,1200,497,1110,372,1876,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Recom Wizard","cat":"Other","a":[0,255,227,483,93,196,0,0,443,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Экспериментальные технологии","cat":"Other","a":[0,12,102,760,0,133,218,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Отдел исследований","cat":"Other","a":[0,256,88,9,0,0,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Поиск","cat":"Поиск на Discovery","a":[0,0,0,581,2293,3276,2056,2044,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Рекомендательные технологии","cat":"Other","a":[0,4,2,92,0,0,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск","cat":"Other","a":[373,2013,614,3436,2262,3617,758,524,396,0,0,0],"p":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,30000.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Поиск по играм и сервисам","cat":"Поиск Bronze Tier","a":[0,0,0,0,337,300,104,165,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по RuStore","cat":"Поиск Bronze Tier","a":[0,23,65,0,647,331,344,450,60,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по авторам","cat":"Поиск Bronze Tier","a":[0,0,0,0,929,788,1030,175,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по людям","cat":"Поиск Bronze Tier","a":[0,282,282,1133,26,64,0,2000,0,0,0,0],"p":[0.0,0.0,0.0,0.0,0.0,4000.0,0.0,4000.0,0.0,4000.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Поиск по ОК Видео","cat":"Поиск Bronze Tier","a":[0,50,16,48,1540,1004,1146,225,42,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по Дзен Видео","cat":"Поиск Bronze Tier","a":[0,6,138,6,2927,1840,1395,2028,10,0,0,0],"p":[0.0,0.0,0.0,0.0,0.0,1000.0,0.0,1000.0,0.0,1000.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Поиск по своим Видео","cat":"Поиск Bronze Tier","a":[0,0,0,0,2420,2943,5976,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по товарам","cat":"Поиск Bronze Tier","a":[0,6,6,0,4165,3290,4751,5021,0,0,0,0],"p":[0.0,0.0,0.0,0.0,0.0,2000.0,0.0,2000.0,0.0,2000.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Поиск по MAX","cat":"Поиск по Max","a":[1713,62,2163,206,4610,4582,3608,38,100,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по аудио контенту","cat":"Поиск Bronze Tier","a":[0,296,306,164,12340,10491,4462,9749,236,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск Единое Видео","cat":"Поиск Единое Видео","a":[10336,392,11160,8289,14935,14344,11658,0,3018,0,0,0],"p":[12000.0,0.0,12000.0,0.0,0.0,12000.0,0.0,0.0,0.0,0.0,0.0,0.0],"order":true,"synthetic":false},{"name":"Поиск - Интеграции","cat":"Other","a":[0,8,0,29,0,20,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Внутренние поисковые сервисы","cat":"Other","a":[0,0,0,39,272,178,289,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск - блендер","cat":"Other","a":[190,0,249,90,355,428,433,122,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Core-технологии поиска","cat":"Other","a":[343,10,36,60,116,443,351,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Инфраструктура разработки","cat":"Other","a":[0,0,60,0,494,508,54,54,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск - S3","cat":"Other","a":[0,586,258,662,0,365,0,0,0,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Запросные сервисы","cat":"Other","a":[94,40,432,89,665,503,424,276,200,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по социальным связям","cat":"Поиск Bronze Tier","a":[3279,144,3780,407,4317,4456,4664,150,50,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск по постам","cat":"Поиск Bronze Tier","a":[0,90,126,1048,9019,7838,12441,7962,114,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"Поиск – запас","cat":"Запас","a":[3486,130,1944,13940,10165,230,18992,6276,2146,0,0,0],"p":[0,0,0,0,0,0,0,0,0,0,0,0],"order":false,"synthetic":false},{"name":"ЕКП Пуши Одноклассники","cat":"Other","a":[0,0,0,0,0,0,0,0,0,0,0,0],"p":[0.0,0.0,0.0,1100.0,0.0,0.0,0.0,200.0,0.0,200.0,0.0,0.0],"order":true}],"order":[15700.0,31478.0,25946.0,17258.0,8318.0,19000.0,5150.0,11678.0,2509.0,41678.0,5368.0,0.0],"reserve":[53486,1652,3625,29770,12804,8796,26810,15299,2476,1470,8600,17]};const COLORS={"Small Products":"#9aa6b2","Заказ":"#8b7cf6","OK":"#5d8eea","Other":"#e2a24d","ProfileStream":"#79b894","VK Видео":"#bf84f3","VK Клипы":"#ee6f8e","VK Музыка":"#4bb6d0","Дзен":"#d9904a","Запас":"#9ebd63","Лента VK":"#da78b0","Общие Рекомы":"#809be3","Поиск Bronze Tier":"#d4b96c","Поиск Единое Видео":"#65bcb3","Поиск на Discovery":"#6b91ff","Поиск по Max":"#47caa0","Реклама":"#f07f7f","Реклама Ecom":"#9a82d0"};const GEO={"MSK":["M100","MEDV"],"UDML":["UDOM"],"PAHR":["PHR1","PHR2","PHR3","PHR4"],"ICVA":["ICVA","ICVS"],"GZNK":["GZNK"],"SDNХ":["SDNХ"],"OSTN":["OSTN"]};const DC_ALIAS={"M100":"EC","MEDV":"PC","UDOM":"UC","PHR1":"HC","PHR2":"RC","PHR3":"KC","PHR4":"DC","ICVA":"IC","ICVS":"CC","GZNK":"ZC","SDNХ":"NC","OSTN":"SC"};
+const LEGACY_FREE_BY_DC=Object.fromEntries(DATA.dcs.map((d,i)=>[d,Number(DATA.free?.[i]||0)]));const nf=new Intl.NumberFormat('ru-RU');const state={cat:[],product:[],geo:[],dc:[],dark:false,transfers:[],adjustments:[]};const scenarioState={scenarios:[null,null,null],selected:null,previewTransfers:null,editingSlot:null,editingTransfers:null};let tableSort={key:null,dir:1};let dragged=null;
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];const total=a=>a.reduce((s,n)=>s+(Number(n)||0),0);const idx=d=>DATA.dcs.indexOf(d);const k=n=>(n/1000).toFixed(1).replace('.',',')+'k';const dcLabel=d=>`${d} · ${DC_ALIAS[d]||d}`;const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));const geoOf=d=>Object.entries(GEO).find(([,a])=>a.includes(d))?.[0]||d;
+const SMALL_PRODUCTS='Small Products';
+const SMALL_PRODUCT_THRESHOLD=8000;
+let SMALL_PRODUCT_NAMES=new Set();
+function isSmallCategory(cat){return cat===SMALL_PRODUCTS}
+function normalizeProductName(name){return String(name??'').replace(/\s+/g,' ').trim().toLocaleLowerCase('ru')}
+function isProfileStreamProductName(name){return /profile\s*stream/i.test(String(name??''))}
+function isDiscoveryRecommendations(name){return normalizeProductName(name)==='discovery рекомендации'}
+// Кандидат на визуальную агрегацию. Other / Запас / Discovery Рекомендации / ProfileStream
+// остаются самостоятельными слоями независимо от объёма.
+function isSmallProductCandidate(product){
+  const p=typeof product==='string'?productByName(product):product;
+  if(!p||p.synthetic||p.cat==='Other'||p.cat==='Запас'||p.cat==='ProfileStream')return false;
+  if(isProfileStreamProductName(p.name)||isDiscoveryRecommendations(p.name))return false;
+  return true;
+}
+// Вариант А: порог действует отдельно для каждого ДЦ.
+function isSmallProductAtDc(productOrName,i){
+  // Группировка Small Products отключена: каждый продукт остаётся самостоятельным.
+  return false;
+}
+// Набор имён нужен только для совместимости со старыми фильтрами/сохранёнными версиями.
+// Само решение о попадании в Small Products всегда принимается через isSmallProductAtDc().
+function rebuildSmallProductSet(){
+  const next=new Set();
+  for(const p of DATA.products){
+    if(!isSmallProductCandidate(p))continue;
+    if(DATA.dcs.some((_,i)=>Number(p.a?.[i]||0)>0&&Number(p.a?.[i]||0)<SMALL_PRODUCT_THRESHOLD))next.add(p.name);
+  }
+  SMALL_PRODUCT_NAMES=next;
+}
+function isFixedSmallProduct(productOrName){
+  const name=typeof productOrName==='string'?productOrName:productOrName?.name;
+  return !!name&&SMALL_PRODUCT_NAMES.has(name);
+}
+
+// Кэш расчётов одного состояния данных. При смене фильтра сами данные не меняются,
+// поэтому тяжёлые расчёты не нужно выполнять повторно для карты, легенды и таблицы.
+let CALC_CACHE=null;
+function resetCalcCache(){
+  CALC_CACHE={
+    productsByName:new Map(DATA.products.map(p=>[p.name,p])),
+    categoriesByName:new Map(DATA.categories.map(c=>[c.name,c])),
+    transferNet:new Map(),
+    adjustmentNet:new Map(),
+    categoryValue:new Map(),
+    productValue:new Map(),
+    orderProductValue:new Map(),
+    smallAnywhere:null,
+    smallValue:new Map(),
+    smallBaseByCategory:new Map()
+  };
+}
+function calcCache(){if(!CALC_CACHE)resetCalcCache();return CALC_CACHE}
+function productByName(name){return calcCache().productsByName.get(name)}
+function categoryByName(name){return calcCache().categoriesByName.get(name)}
+function smallBaseValueByCategory(cat,i){
+  const cache=calcCache(),key=cat+'|'+i;
+  if(cache.smallBaseByCategory.has(key))return cache.smallBaseByCategory.get(key);
+  const result=DATA.products.reduce((sum,p)=>p.cat===cat&&isSmallProductAtDc(p,i)?sum+productValue(p.name,i):sum,0);
+  cache.smallBaseByCategory.set(key,result);
+  return result;
+}
+function smallProductValue(productName,i){
+  const cache=calcCache(),key=productName+'|'+i;
+  if(cache.smallValue.has(key))return cache.smallValue.get(key);
+  const result=isSmallProductAtDc(productName,i)?productValue(productName,i):0;
+  cache.smallValue.set(key,result);
+  return result;
+}
+function smallProductsAnywhere(){
+  const cache=calcCache();
+  if(cache.smallAnywhere)return cache.smallAnywhere;
+  cache.smallAnywhere=DATA.products.filter(p=>isSmallProductCandidate(p)&&DATA.dcs.some((_,i)=>isSmallProductAtDc(p,i)));
+  return cache.smallAnywhere;
+}
+function smallProductsValue(i){
+  const cache=calcCache(),key='sum|'+i;
+  if(cache.smallValue.has(key))return cache.smallValue.get(key);
+  const result=DATA.products.reduce((sum,p)=>sum+smallProductValue(p.name,i),0);
+  cache.smallValue.set(key,result);
+  return result;
+}
+function categoryDisplayValue(cat,i){
+  if(isSmallCategory(cat))return smallProductsValue(i);
+  if(cat==='Other'||cat==='Запас'||cat==='Заказ')return categoryValue(cat,i);
+  return Math.max(0,categoryValue(cat,i)-smallBaseValueByCategory(cat,i));
+}
+
+// «Заказ» — виртуальная категория, в которую входят реальные продукты из планового файла.
+// Single source of truth for the currently visible allocation layer.
+// Preview/edit layers are isolated from the main journal until explicitly applied/saved.
+function activeTransfers(){return scenarioState.previewTransfers||scenarioState.editingTransfers||state.transfers}
+// Write target for a transfer: scenario edit copy or the main journal.
+function workingTransfers(){return scenarioState.editingSlot!=null?scenarioState.editingTransfers:state.transfers}
+function transferNet(i){
+  const cache=calcCache(),key=String(i);
+  if(cache.transferNet.has(key))return cache.transferNet.get(key);
+  let out=0,inn=0;
+  for(const t of activeTransfers())if(t.status==='Активен'){
+    if(t.si===i)out+=Number(t.amount)||0;
+    if(t.di===i)inn+=Number(t.amount)||0;
+  }
+  const result={out,inn};
+  cache.transferNet.set(key,result);
+  return result;
+}
+function adjustmentNet(i){
+  const cache=calcCache(),key=String(i);
+  if(cache.adjustmentNet.has(key))return cache.adjustmentNet.get(key);
+  let load=0,free=0;
+  for(const a of state.adjustments||[])if(a.status==='Активен'&&a.dcIndex===i){
+    const q=Number(a.amount)||0;
+    if(a.effect==='consume'){load+=q;free-=q}else{load-=q;free+=q}
+  }
+  const result={load,free};
+  cache.adjustmentNet.set(key,result);
+  return result;
+}
+function dynamicLoad(i){const n=transferNet(i),a=adjustmentNet(i);return DATA.current[i]+DATA.plan[i]-n.out+n.inn+a.load}
+function dynamicFree(i){const n=transferNet(i),a=adjustmentNet(i);return DATA.free[i]+n.out-n.inn+a.free}
+function transferKind(t){return t?.kind||'category'}
+function getOrderReminder(kind,key,cat,sourceIndex){
+  const si=Number.isInteger(sourceIndex)?sourceIndex:-1;
+  if(si<0)return '';
+  if(kind==='product'){
+    const p=DATA.products.find(x=>x.name===key);
+    const order=orderProductValue(key,si);
+    return p && order>0 ? `⚠️ У продукта «${esc(key)}» на ДЦ ${esc(dcLabel(DATA.dcs[si]))} есть заказ ${nf.format(order)} vCPU. При переносе продукта заказ не переносится автоматически — его нужно перенести отдельно.` : '';
+  }
+  if(kind==='category'){
+    const products=DATA.products.filter(p=>!p.synthetic && p.cat===cat && orderProductValue(p.name,si)>0);
+    if(!products.length)return '';
+    const list=products.map(p=>`«${esc(p.name)}» — ${nf.format(orderProductValue(p.name,si))} vCPU`).join('; ');
+    return `⚠️ На ДЦ ${esc(dcLabel(DATA.dcs[si]))} в этой категории есть продукты с заказами: ${list}. При переносе категории заказы не переносятся автоматически — их нужно перенести отдельно.`;
+  }
+  if(kind==='smallProducts'){
+    const products=DATA.products.filter(p=>isSmallProductCandidate(p)&&isSmallProductAtDc(p,si)&&orderProductValue(p.name,si)>0);
+    if(!products.length)return '';
+    const list=products.map(p=>`«${esc(p.name)}» — ${nf.format(orderProductValue(p.name,si))} vCPU`).join('; ');
+    return `⚠️ В Small Products на ДЦ ${esc(dcLabel(DATA.dcs[si]))} есть продукты с заказами: ${list}. При переносе Small Products заказы не переносятся автоматически — их нужно перенести отдельно.`;
+  }
+  return '';
+}
+function categoryValue(cat,i){
+  const cache=calcCache(),key=cat+'|'+i;
+  if(cache.categoryValue.has(key))return cache.categoryValue.get(key);
+  let v=Number(categoryByName(cat)?.v?.[i]||0);
+  for(const t of activeTransfers())if(t.status==='Активен'&&(t.cat===cat||(cat==='Заказ'&&transferKind(t)==='orderProduct'))){
+    if(t.si===i)v-=Number(t.amount)||0;
+    if(t.di===i)v+=Number(t.amount)||0;
+  }
+  for(const a of state.adjustments||[])if(a.status==='Активен'&&a.dcIndex===i&&productByName(a.product)?.cat===cat)v+=Number(a.amount)||0;
+  cache.categoryValue.set(key,v);
+  return v;
+}
+function productValue(productName,i){
+  const cache=calcCache(),key=productName+'|'+i;
+  if(cache.productValue.has(key))return cache.productValue.get(key);
+  const p=productByName(productName);
+  let v=Number(p?.a?.[i]||0);
+  for(const t of activeTransfers())if(t.status==='Активен'){
+    if(transferKind(t)==='product'&&t.product===productName){
+      if(t.si===i)v-=Number(t.amount)||0;
+      if(t.di===i)v+=Number(t.amount)||0;
+    }
+    if(transferKind(t)==='smallProducts'&&Array.isArray(t.parts)){
+      const part=t.parts.find(x=>x&&x.product===productName);
+      if(part){
+        const amt=Number(part.amount)||0;
+        if(t.si===i)v-=amt;
+        if(t.di===i)v+=amt;
+      }
+    }
+  }
+  for(const a of state.adjustments||[])if(a.status==='Активен'&&a.product===productName&&a.dcIndex===i)v+=Number(a.amount)||0;
+  cache.productValue.set(key,v);
+  return v;
+}
+function orderProductValue(productName,i){
+  const cache=calcCache(),key=productName+'|'+i;
+  if(cache.orderProductValue.has(key))return cache.orderProductValue.get(key);
+  const p=productByName(productName);
+  let v=Number(p?.p?.[i]||0);
+  for(const t of activeTransfers())if(t.status==='Активен'&&transferKind(t)==='orderProduct'&&t.product===productName){
+    if(t.si===i)v-=Number(t.amount)||0;
+    if(t.di===i)v+=Number(t.amount)||0;
+  }
+  cache.orderProductValue.set(key,v);
+  return v;
+}
+function selectedProducts(cat){
+  const pool=cat==='Заказ'?DATA.products.filter(p=>p.order):isSmallCategory(cat)?smallProductsAnywhere():DATA.products.filter(p=>p.cat===cat);
+  return pool.filter(p=>!state.product.length||state.product.includes(p.name));
+}
+function visibleValue(cat,i){
+  if(cat==='Заказ'){
+    if(state.product.length)return selectedProducts('Заказ').reduce((s,p)=>s+orderProductValue(p.name,i),0);
+    return categoryValue(cat,i);
+  }
+  if(isSmallCategory(cat)){
+    if(!state.product.length||isExplicitAll('product'))return smallProductsValue(i);
+    return selectedProducts(cat).reduce((s,p)=>s+smallProductValue(p.name,i),0);
+  }
+  if(!state.product.length||isExplicitAll('product')){
+    // При явном выборе категории вместе с Small Products показываем в категории
+    // только не-small часть, чтобы выбранные сегменты не дублировали объём.
+    if(state.cat.length&&!isExplicitAll('cat')&&state.cat.includes(SMALL_PRODUCTS))return categoryDisplayValue(cat,i);
+    return categoryValue(cat,i);
+  }
+  return selectedProducts(cat).reduce((s,p)=>isSmallProductAtDc(p,i)?s:s+productValue(p.name,i),0);
+}
+function filteredDcs(){return DATA.dcs.filter(d=>(!state.dc.length||state.dc.includes(d))&&(!state.geo.length||state.geo.includes(geoOf(d))))}
+function allFilterValues(key){
+  if(key==='cat')return DATA.categories.map(c=>c.name);
+  if(key==='product')return DATA.products.map(p=>p.name);
+  if(key==='geo')return Object.keys(GEO);
+  if(key==='dc')return DATA.dcs.slice();
+  return [];
+}
+function isExplicitAll(key){
+  const all=allFilterValues(key), selected=state[key]||[];
+  return all.length>0&&selected.length===all.length&&all.every(v=>selected.includes(v));
+}
+function categoryMatchesProduct(cat,p){
+  if(cat==='Заказ')return !!p.order;
+  if(isSmallCategory(cat))return isSmallProductCandidate(p)&&DATA.dcs.some((_,i)=>isSmallProductAtDc(p,i));
+  return p.cat===cat;
+}
+function availableFilterValues(key){
+  const all=allFilterValues(key);
+  if(key==='product'){
+    // A selected subset of categories narrows the product list.
+    const cats=state.cat||[];
+    const catRestricted=cats.length>0&&!isExplicitAll('cat');
+    if(!catRestricted)return all;
+    return DATA.products.filter(p=>cats.some(c=>categoryMatchesProduct(c,p))).map(p=>p.name);
+  }
+  if(key==='cat'){
+    // A selected subset of products narrows the category list.
+    const products=state.product||[];
+    const productRestricted=products.length>0&&!isExplicitAll('product');
+    if(!productRestricted)return all;
+    return DATA.categories.filter(c=>products.some(name=>{
+      const p=DATA.products.find(x=>x.name===name);
+      return p&&categoryMatchesProduct(c.name,p);
+    })).map(c=>c.name);
+  }
+  return all;
+}
+function normalizeDependentSelections(){
+  // Keep explicit selections only where they remain valid under the other filter.
+  // Empty selection continues to mean "no restriction / all".
+  for(let pass=0;pass<2;pass++){
+    const productAvail=new Set(availableFilterValues('product'));
+    if(state.product.length)state.product=state.product.filter(v=>productAvail.has(v));
+    const catAvail=new Set(availableFilterValues('cat'));
+    if(state.cat.length)state.cat=state.cat.filter(v=>catAvail.has(v));
+  }
+}
+function filterMenu(key,title,vals){
+  // Empty state means: no explicit restriction (all values are active),
+  // but checkboxes stay visually empty until the user presses "Выбрать все".
+  const allSelected=vals.length>0&&state[key].length===vals.length&&vals.every(v=>state[key].includes(v));
+  const label=allSelected?'Все':state[key].length?state[key].length+' выбрано':'Все';
+  return `<div class="filter" data-k="${key}"><button type="button">${title}: <b>${label}</b> ▾</button><div class="menu"><input type="text" placeholder="Поиск"><div class="menu-actions"><button type="button" data-all>Выбрать все</button><button type="button" data-reset>Сбросить</button></div>${vals.map(v=>`<label class="opt"><input type="checkbox" value="${esc(v)}" ${state[key].includes(v)?'checked':''}><span>${esc(v)}</span></label>`).join('')}</div></div>`
+}
+function refreshAfterFilterChange(keepOpen){
+  // При смене фильтра данные не меняются — сохраняем CALC_CACHE и не считаем
+  // одинаковые значения заново в каждой части интерфейса.
+  normalizeDependentSelections();
+  renderFilters(keepOpen);
+  renderQuick();
+  renderMap();
+  updateLegendSelection();
+  showProducts(state.cat.length?state.cat:[],false);
+}
+function renderFilters(keepOpen=null){
+  const defs=[
+    ['geo','ГЕО',availableFilterValues('geo')],
+    ['dc','ДЦ',availableFilterValues('dc')],
+    ['cat','Категория',availableFilterValues('cat')],
+    ['product','Продукты',availableFilterValues('product')]
+  ];
+  $('#filters').innerHTML=defs.map(x=>filterMenu(...x)).join('')+`<button class="journal-btn ${state.transfers.some(t=>t.status==='Активен')?'has':''}" id="journalOpen">Журнал переносов${state.transfers.filter(t=>t.status==='Активен').length?' · '+state.transfers.filter(t=>t.status==='Активен').length:''}</button><button class="journal-btn" id="adjustOpen">Корректировка</button><button class="journal-btn" id="uploadOpen">Загрузить данные</button><button class="journal-btn" id="dataOpen">Данные файла</button>`;
+  $$('.filter').forEach(box=>{
+    const key=box.dataset.k,btn=box.querySelector(':scope>button'),search=box.querySelector('input[type=text]');
+    if(keepOpen===key)box.classList.add('open');
+    btn.onclick=e=>{e.stopPropagation();$$('.filter.open').forEach(x=>x!==box&&x.classList.remove('open'));box.classList.toggle('open')};
+    box.querySelectorAll('input[type=checkbox]').forEach(o=>o.onchange=()=>{
+      state[key]=[...box.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);
+      refreshAfterFilterChange(key);
+    });
+    box.querySelector('[data-all]').onclick=e=>{
+      e.preventDefault();
+      state[key]=[...box.querySelectorAll('input[type=checkbox]')].map(o=>o.value);
+      refreshAfterFilterChange(key);
+    };
+    box.querySelector('[data-reset]').onclick=e=>{
+      e.preventDefault();
+      state[key]=[];
+      refreshAfterFilterChange(key);
+    };
+    search.oninput=e=>{const t=e.target.value.toLowerCase();box.querySelectorAll('.opt').forEach(o=>o.style.display=o.textContent.toLowerCase().includes(t)?'flex':'none')};
+  });
+  const jb=$('#journalOpen');
+  if(jb)jb.onclick=openJournal;
+  $('#adjustOpen').onclick=openAdjustment;
+  $('#uploadOpen').onclick=openUpload;
+  $('#dataOpen').onclick=openDataFile;
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.filter'))$$('.filter.open').forEach(x=>x.classList.remove('open'))});
+function renderQuick(){const ids=filteredDcs().map(idx);const cur=ids.reduce((s,i)=>s+DATA.current[i],0),pl=ids.reduce((s,i)=>s+DATA.plan[i],0),pw=ids.reduce((s,i)=>s+DATA.power[i],0),shed=ids.reduce((s,i)=>s+DATA.shed[i],0),cloud=ids.reduce((s,i)=>s+DATA.cloudAbs[i],0),free=ids.reduce((s,i)=>s+dynamicFree(i),0);const gcur=total(DATA.current),gplan=total(DATA.plan),gcloud=total(DATA.cloudAbs),gload=DATA.dcs.reduce((s,d,i)=>s+dynamicLoad(i),0),gfree=DATA.dcs.reduce((s,d,i)=>s+dynamicFree(i),0);const global=ids.length===DATA.dcs.length;const selectedLoad=ids.reduce((s,i)=>s+dynamicLoad(i),0),selectedCapacity=selectedLoad+free;const loadPct=(global?(gload/(gload+gfree||1)*100):(selectedCapacity?selectedLoad/selectedCapacity*100:0));$('#quick').innerHTML=`<div class="quick-card"><span>AS IS</span><b>${nf.format(cur)}</b><small>vCPU${global?' · 12 ДЦ':''}</small></div><div class="quick-card"><span>Плановая нагрузка</span><b>+${nf.format(pl)}</b><small>заказ 2026</small></div><div class="quick-card"><span>Новые мощности</span><b>+${nf.format(pw)}</b><small>к концу 2026</small></div><div class="quick-card"><span>Сдать в облако</span><b>−${nf.format(Math.abs(cloud))}</b><small>${global?nf.format(Math.abs(gcloud))+' vCPU отдаём в облако':'по выбранным ДЦ'}</small></div><div class="quick-card"><span>Свободно</span><b class="${free>=0?'positive':'negative'}">${free>=0?'+':''}${nf.format(free)}</b><small>${global?nf.format(free)+' vCPU по строке «Итого без передвижений»':'по выбранным ДЦ'}</small></div><div class="quick-card"><span>Загрузка на 2026</span><b>${loadPct.toFixed(1)}%</b><small>${global?'занято / (занято + свободно)':'по выбранным ДЦ'}</small></div>`}
+function renderMap(){
+  const ds=filteredDcs(),groups={};
+  for(const d of ds)(groups[geoOf(d)]??=[]).push(d);
+  const maxCur=Math.max(1,...ds.map(d=>dynamicLoad(idx(d))));
+  const allCategoryNames=allFilterValues('cat');
+  const allProductNames=DATA.products.map(p=>p.name);
+  const isSelective=(key,vals)=>state[key].length>0 && !(state[key].length===vals.length && vals.length>0 && vals.every(v=>state[key].includes(v)));
+  const selectionActive=isSelective('product',allProductNames)||isSelective('cat',allCategoryNames);
+  const productRestricted=state.product.length>0 && !isExplicitAll('product');
+  const selectedProductObjects=productRestricted
+    ? state.product.map(name=>DATA.products.find(p=>p.name===name)).filter(Boolean)
+    : [];
+  const showReserve=state.cat.includes('Запас');
+  const visibleMapCategory=c=>c.name!=='Запас'||showReserve;
+
+  const mapCatsForDc=(i)=>{
+    if(state.cat.length && !isExplicitAll('cat')){
+      const selected=new Set(state.cat);
+      const result=DATA.categories.filter(c=>selected.has(c.name)&&visibleMapCategory(c)); return result;
+    }
+    if(productRestricted){
+      const selectedCats=new Set(selectedProductObjects.map(p=>p.cat));
+      if(selectedProductObjects.some(p=>p?.order))selectedCats.add('Заказ');
+      const result=[];
+      for(const c of DATA.categories){
+        if(c.name==='Запас'&&!showReserve)continue;
+        if(selectedCats.has(c.name))result.push(c);
+      }
+      const hasSmall=selectedProductObjects.some(p=>p.cat!=='Запас'&&DATA.dcs.some((_,j)=>isSmallProductAtDc(p,j)));
+      if(hasSmall)result.push({name:SMALL_PRODUCTS,v:[]});
+      return result;
+    }
+    const result=DATA.categories.filter(c=>visibleMapCategory(c)&&c.name!==SMALL_PRODUCTS);
+    result.push({name:SMALL_PRODUCTS,v:[]});
+    return result;
+  };
+
+  $('#map').innerHTML=Object.entries(groups).map(([g,arr])=>`<div class="geo" style="--n:${arr.length};grid-column:span ${arr.length}"><span class="geo-label">${esc(g)} · ${k(arr.reduce((s,d)=>{const i=idx(d);return s+dynamicLoad(i)+dynamicFree(i)},0))}</span>${arr.map(d=>{
+    const i=idx(d),cur=DATA.current[i],end=dynamicLoad(i),pl=DATA.plan[i],pw=DATA.power[i],shed=DATA.shed[i],cloud=DATA.cloudAbs[i],free=dynamicFree(i),ratioCapacity=end+free,pct=ratioCapacity>0?end/ratioCapacity*100:(end>0?100:0),disp=free>=0?Math.min(100,pct):Math.max(100,pct),fill=Math.max(0,Math.min(100,disp)),bc=disp>100?'var(--bad)':disp>85?'var(--warn)':'var(--good)',vh=Math.round((210+270*(end/maxCur))*(d==='OSTN'?0.5:(d==='PHR3'?1.15:(d==='PHR2'?0.9:(d==='MEDV'?1.08:(d==='ICVS'?0.9:1))))));
+    const cats=mapCatsForDc(i);
+    const singleProduct=(productRestricted&&state.product.length===1)?selectedProductObjects[0]:null;
+    const defaultMapMode=!productRestricted&&(!state.cat.length||isExplicitAll('cat')); const segData=cats.map(c=>({c,v:(defaultMapMode?categoryValue(c.name,i):visibleValue(c.name,i))})).filter(x=>x.v>0).sort((a,b)=>a.v-b.v);
+    let labelNames=new Set();
+    // Подписи только для сегментов, которые покрывают первые 80% объёма стакана.
+    // Сначала берём крупнейшие сегменты, независимо от режима фильтра.
+    let labelCovered=0;
+    const labelTarget=dynamicLoad(i)*0.8;
+    [...segData].sort((a,b)=>b.v-a.v).forEach(x=>{
+      if(labelCovered<labelTarget){
+        labelNames.add(x.c.name);
+        labelCovered+=x.v;
+      }
+    });
+    // Единая база геометрии: итоговая загрузка ДЦ.
+    // Категории — только визуальная разбивка этой загрузки, поэтому
+    // расхождения AS IS / план / shed / cloud не создают пустых зон.
+    const defaultMapCats=DATA.categories.filter(c=>visibleMapCategory(c));
+    const fullVisualSource=Math.max(0,
+      defaultMapCats.reduce((s,c)=>s+categoryDisplayValue(c.name,i),0)
+    );
+    const visualLoad=Math.max(0,dynamicLoad(i));
+    const capacity=Math.max(1,visualLoad+Math.max(0,free));
+    const loadPct=Math.min(100,visualLoad/capacity*100),freePct=free>0?Math.min(100,free/capacity*100):0,loadPx=Math.round(vh*loadPct/100);
+    const freeText=free>0?`<div class="free-zone" title="Свободно ${k(free)} vCPU"><span>Свободно +${k(free)}</span></div>`:'';
+    let usedSegPx=0;
+    const segHtml=[];
+    for(const {c,v} of segData){
+      const label=labelNames.has(c.name)?`<span class="seg-label">${c.name===SMALL_PRODUCTS?`Small Products · ${k(v)}`:(c.name==='Заказ'&&singleProduct&&singleProduct.order?`Заказ · ${esc(singleProduct.name)} · ${k(v)}`:`${esc(c.name)} · ${k(v)}`)}</span>`:'';
+      const segPx=fullVisualSource>0?Math.max(1,Math.round(loadPx*v/fullVisualSource)):0;
+      const isSmall=isSmallCategory(c.name);
+      const isSingleProductAsIs=!!singleProduct && c.name!=='Заказ'&&c.name!==SMALL_PRODUCTS&&singleProduct.cat===c.name;
+      const isSingleProductSmall=!!singleProduct&&isSmall&&smallProductValue(singleProduct.name,i)>0;
+      const isSingleProductOrder=!!singleProduct&&c.name==='Заказ'&&!!singleProduct.order;
+      const dragEnabled=!scenarioState.previewTransfers&&(
+        isSmall
+          ? (!productRestricted||isSingleProductSmall)
+          : (!productRestricted||isSingleProductAsIs||isSingleProductOrder)
+      );
+      const dragKind=isSingleProductAsIs||isSingleProductSmall?'product':(isSingleProductOrder?'orderProduct':(isSmall?'smallProducts':'category'));
+      const dragKey=isSingleProductAsIs||isSingleProductSmall||isSingleProductOrder?singleProduct.name:(isSmall?SMALL_PRODUCTS:c.name);
+      const dragValue=isSingleProductOrder?orderProductValue(singleProduct.name,i):(isSingleProductAsIs?productValue(singleProduct.name,i):(isSingleProductSmall?smallProductValue(singleProduct.name,i):(isSmall?smallProductsValue(i):v)));
+      if(isSingleProductOrder&&dragValue<=0)continue;
+      usedSegPx+=segPx;
+      const dragAttrs=dragEnabled?` draggable="true" data-drag-kind="${dragKind}" data-drag-key="${esc(dragKey)}" data-drag-cat="${esc(c.name)}" data-src-dc="${esc(d)}"`:` draggable="false" data-drag-disabled="1" data-drag-cat="${esc(c.name)}" data-src-dc="${esc(d)}"`;
+      const extra=selectionActive?` data-product-view="1"`:'';
+      segHtml.push(`<div class="seg${label?' labeled':''}${dragEnabled?'':' no-drag'}"${dragAttrs} data-map-seg="1" title="${esc(c.name)} · ${k(v)}" style="height:${segPx}px;background:${COLORS[c.name]||'#999'}"${extra}>${label}</div>`);
+    }
+    const fillerPx=selectionActive?Math.max(0,loadPx-usedSegPx):0;
+    const filler=fillerPx>0?`<div class="seg filter-filler no-drag" aria-hidden="true" title="Остальные продукты" style="height:${fillerPx}px;background:rgba(117,142,170,.16);cursor:default"></div>`:'';
+    const segs=segHtml.join('');
+    const stackContent=selectionActive?filler+segs:segs;
+
+    return `<div class="dc"><div class="dc-head"><b title="${esc(dcLabel(d))}">${esc(dcLabel(d))}</b><span>${k(end+free)}</span></div><div class="vessel${free<0?' overlimit':''}" data-drop-dc="${esc(d)}" style="--vessel-h:${vh}px;--load-pct:${loadPct}%;--free-pct:${freePct}%"><div class="load-stack" style="height:${loadPx}px">${stackContent}</div>${freeText}</div><div class="load-slot"><div class="load"><div class="loadrow"><span>Загрузка ДЦ</span><b class="${disp>100?'negative':disp<=85?'positive':''}">${disp.toFixed(1)}%</b></div><div class="track"><i style="width:${fill}%;background:${bc}"></i></div><div class="loadrow main"><span>${k(cur)} → ${k(end)}</span><span class="add">+${k(pl)}</span></div><div class="loadrow"><span>Доп. мощ-ти</span><span class="power">+${k(pw)}</span></div><div class="loadrow"><span>Сдует Поиск</span><span class="power shed-search">+${k(shed)}</span></div><div class="loadrow"><span>Сдать в облако</span><span class="power cloud-out">${cloud<0?'+':'−'}${k(Math.abs(cloud))}</span></div><div class="loadrow"><span class="${free>=0?'positive':'negative'}">${free>=0?'Свободно +'+k(free):'Перелимит −'+k(-free)}</span></div></div></div></div>`;
+  }).join('')}</div>`).join('');
+
+  const alignLoadCards=()=>{
+    const map=$('#map');
+    if(!map)return;
+    const maxLoadH=Math.max(0,...$$('#map .load').map(el=>el.offsetHeight));
+    map.style.setProperty('--load-slot-h',maxLoadH+'px');
+  };
+  requestAnimationFrame(alignLoadCards);
+  bindMapInteractions();
+}
+
+if(typeof ResizeObserver!=='undefined'){
+  const mapResizeObserver=new ResizeObserver(()=>{
+    const map=$('#map');
+    if(!map)return;
+    const maxLoadH=Math.max(0,...$$('#map .load').map(el=>el.offsetHeight));
+    map.style.setProperty('--load-slot-h',maxLoadH+'px');
+  });
+  window.addEventListener('load',()=>{
+    const map=$('#map');
+    if(map)mapResizeObserver.observe(map);
+  },{once:true});
+}
+
+function bindMapInteractions(){
+  const tip=$('#catTooltip');
+  $$('[data-map-seg]').forEach(el=>{
+    el.addEventListener('mouseenter',e=>{
+      const cat=el.dataset.dragCat;
+      const i=idx(el.dataset.srcDc);
+      const kind=el.dataset.dragKind;
+      const name=kind==='product'?(el.dataset.dragKey||'Продукт'):cat;
+      const value=kind==='product'?productValue(name,i):(kind==='smallProducts'?smallProductsValue(i):(kind==='orderProduct'?orderProductValue(name,i):visibleValue(cat,i)));
+      tip.textContent=`${name}\n${nf.format(value)} vCPU`;
+      tip.style.left=e.clientX+14+'px';tip.style.top=e.clientY+14+'px';tip.classList.add('show');
+    });
+    el.addEventListener('mousemove',e=>{tip.style.left=e.clientX+14+'px';tip.style.top=e.clientY+14+'px'});
+    el.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+    el.addEventListener('click',e=>{e.stopPropagation();showProducts(el.dataset.dragCat)});
+  });
+  $$('[draggable="true"][data-drag-kind]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{
+      dragged={kind:el.dataset.dragKind,key:el.dataset.dragKey,cat:el.dataset.dragCat,src:el.dataset.srcDc};
+      el.classList.add('dragging');
+      e.dataTransfer?.setData('text/plain',dragged.key);
+      if(e.dataTransfer)e.dataTransfer.effectAllowed='move';
+    });
+    el.addEventListener('dragend',()=>{el.classList.remove('dragging');$$('.drop-target').forEach(x=>x.classList.remove('drop-target'));dragged=null;tip.classList.remove('show')});
+  });
+  $$('[data-drop-dc]').forEach(v=>{
+    v.addEventListener('dragover',e=>{if(!dragged||dragged.src===v.dataset.dropDc)return;e.preventDefault();v.classList.add('drop-target');if(e.dataTransfer)e.dataTransfer.dropEffect='move'});
+    v.addEventListener('dragleave',()=>v.classList.remove('drop-target'));
+    v.addEventListener('drop',e=>{e.preventDefault();v.classList.remove('drop-target');if(dragged&&dragged.src!==v.dataset.dropDc)openMoveModal(dragged.kind,dragged.key,dragged.cat,dragged.src,v.dataset.dropDc)});
+  });
+}
+function updateLegendSelection(){
+  const all=$('#legendAll');
+  if(all)all.classList.toggle('selected',!state.cat.length);
+  $$('[data-legend-cat]').forEach(x=>x.classList.toggle('selected',state.cat.includes(x.dataset.legendCat)));
+}
+function renderLegend(){
+  const categoryNames=[...DATA.categories.map(c=>c.name)].sort((a,b)=>{
+    const av=isSmallCategory(a)?DATA.dcs.reduce((s,_,i)=>s+smallProductsValue(i),0):total(DATA.categories.find(x=>x.name===a)?.v||[]);
+    const bv=isSmallCategory(b)?DATA.dcs.reduce((s,_,i)=>s+smallProductsValue(i),0):total(DATA.categories.find(x=>x.name===b)?.v||[]);
+    return bv-av;
+  });
+  const pills=categoryNames.map(c=>{
+    const value=isSmallCategory(c)?DATA.dcs.reduce((s,_,i)=>s+smallProductsValue(i),0):total(DATA.categories.find(x=>x.name===c)?.v||[]);
+    return `<span class="pill ${state.cat.includes(c)?'selected':''}" data-legend-cat="${esc(c)}"><i class="dot" style="background:${COLORS[c]||'#7d8896'}"></i>${esc(c)} · ${nf.format(value)}</span>`;
+  }).join('');
+  $('#legend').innerHTML='<span class="legend-title">Категории · мультивыбор:</span><span class="pill '+(!state.cat.length?'selected':'')+'" id="legendAll">Все</span>'+pills;
+  $('#legendAll').onclick=()=>{state.cat=[];state.product=[];renderAll();showProducts([])};
+  $$('[data-legend-cat]').forEach(x=>x.onclick=()=>{
+    const c=x.dataset.legendCat;
+    state.cat=state.cat.includes(c)?state.cat.filter(v=>v!==c):[...state.cat,c];
+    state.product=[];
+    renderAll();
+    showProducts(state.cat);
+  });
+}
+
+function sortProducts(rows){
+  if(!tableSort.key)return rows.slice();
+  const dir=tableSort.dir;
+  const key=tableSort.key;
+  return rows.slice().sort((a,b)=>{
+    let av=0,bv=0;
+    if(key==='total'){av=total(a.a.map((_,i)=>productValue(a.name,i)))+total(a.p.map((_,i)=>orderProductValue(a.name,i)));bv=total(b.a.map((_,i)=>productValue(b.name,i)))+total(b.p.map((_,i)=>orderProductValue(b.name,i)))}
+    else if(key.startsWith('dc:')){const i=Number(key.slice(3));av=productValue(a.name,i)+orderProductValue(a.name,i);bv=productValue(b.name,i)+orderProductValue(b.name,i)}
+    const d=bv-av;
+    if(d!==0)return dir<0?-d:d;
+    return String(a.name).localeCompare(String(b.name),'ru');
+  });
+}
+function sortIndicator(key){if(tableSort.key!==key)return '↕';return tableSort.dir===1?'↑':'↓'}
+function bindProductTableSort(){
+  $$('#details [data-sort-key]').forEach(btn=>btn.onclick=()=>{
+    const key=btn.dataset.sortKey;
+    if(tableSort.key===key)tableSort.dir*=-1;else{tableSort.key=key;tableSort.dir=1}
+    showProducts(state.cat.length?state.cat:[]);
+  });
+}
+function showOrderBreakdown(){showProducts(['Заказ'])}
+
+function showProducts(cats,autoScroll=true){
+  const selected=Array.isArray(cats)?cats:(cats?[cats]:[]);
+  const wanted=selected.length?selected:DATA.categories.map(c=>c.name);
+  const orderOnly=selected.length===1&&selected[0]==='Заказ';
+  const smallOnly=selected.length===1&&selected[0]===SMALL_PRODUCTS;
+  const rows=sortProducts(DATA.products.filter(p=>{
+    const categoryMatch=selected.length
+      ? selected.some(c=>c==='Заказ'?!!p.order:categoryMatchesProduct(c,p))
+      : wanted.includes(p.cat)||!!p.order||categoryMatchesProduct(SMALL_PRODUCTS,p);
+    return categoryMatch&&(!state.product.length||state.product.includes(p.name));
+  }));
+  const sumsA=Array(DATA.dcs.length).fill(0),sumsP=Array(DATA.dcs.length).fill(0);
+  rows.forEach(p=>p.a.forEach((v,i)=>{
+    const matchedSmall=isSmallCategory(selected[0])||(!selected.length&&categoryMatchesProduct(SMALL_PRODUCTS,p));
+    sumsA[i]+=matchedSmall?smallProductValue(p.name,i):productValue(p.name,i);
+  }));
+  rows.forEach(p=>p.p.forEach((v,i)=>sumsP[i]+=orderProductValue(p.name,i)));
+  const tip=$('#productTooltip');
+  const cell=(av,pv)=>{
+    const tv=orderOnly?pv:av+pv;
+    if(!tv)return'<span class="cell-value">—</span>';
+    let title=orderOnly?`Выдачи 2026: +${nf.format(pv)} vCPU`:`AS IS: ${nf.format(av)} vCPU`;
+    if(!orderOnly&&pv)title+=`\nВыдачи 2026: +${nf.format(pv)} vCPU\nИтого: ${nf.format(tv)} vCPU`;
+    return`<span class="cell-value ${pv?'plan-cell':''}" data-product-tip="${esc(title)}">${nf.format(tv)}</span>`;
+  };
+  $('#details').classList.add('show');
+  const title=orderOnly?'Заказ':(smallOnly?SMALL_PRODUCTS:(wanted.length===DATA.categories.length&&!selected.length?'Все категории':selected.length===1?selected[0]:`${selected.length} категорий`));
+  const orderNote=orderOnly?`<div class="details-note" style="padding:8px 0;color:var(--muted)"><b>Заказ</b> — здесь показываются только данные из файла «Выгрузка2026» / «Выдачи 2026». Значения AS IS по этим продуктам не добавляются. Сумма «Выдач 2026» сверяется с «Итого заказ» по каждому ДЦ: <b>${nf.format(total(DATA.order||[]))} vCPU</b>.</div>`:'';
+  const header=DATA.dcs.map((d,i)=>`<th><button type="button" class="sort-btn" data-sort-key="dc:${i}">${esc(dcLabel(d))} <span>${sortIndicator('dc:'+i)}</span></button></th>`).join('');
+  const body=rows.length?rows.map((p,ri)=>{
+    const displayCat=orderOnly?'Заказ':(smallOnly?SMALL_PRODUCTS:(selected.includes('Заказ')&&p.order?'Заказ':p.cat));
+    const isRowSmall=smallOnly||(!selected.length&&categoryMatchesProduct(SMALL_PRODUCTS,p));
+    const rowAsIs=total(p.a.map((_,i)=>isRowSmall?smallProductValue(p.name,i):productValue(p.name,i)));
+    const rowPlan=total(p.p.map((_,i)=>orderProductValue(p.name,i)));
+    return `<tr><td>${ri+1}</td><td>${esc(displayCat)}</td><td><b>${esc(p.name)}</b></td>${DATA.dcs.map((_,i)=>{const av=(smallOnly||(!selected.length&&categoryMatchesProduct(SMALL_PRODUCTS,p)))?smallProductValue(p.name,i):productValue(p.name,i);return `<td>${cell(av,orderProductValue(p.name,i))}</td>`}).join('')}<td><b>${nf.format(orderOnly?rowPlan:rowAsIs+rowPlan)}</b></td></tr>`;
+  }).join(''):'';
+  const totalHeader=`<th><button type="button" class="sort-btn" data-sort-key="total">Итого <span>${sortIndicator('total')}</span></button></th>`;
+  const footerCells=DATA.dcs.map((_,i)=>`<td>${cell(orderOnly?0:sumsA[i],sumsP[i])}</td>`).join('');
+  const footerTotal=orderOnly?total(sumsP):total(sumsA)+total(sumsP);
+  $('#details').innerHTML=`<div class="details-head"><b>${esc(title)} · продукты и распределение по ДЦ</b><button class="details-close" id="detailsClose">Закрыть</button></div>${rows.length?`<div class="details-note" style="padding:8px 0;color:var(--muted)"><b>${rows.length}</b> строк · ${orderOnly?'показаны только «Выдачи 2026» без добавления AS IS.':'показана итоговая сумма <b>AS IS + Выдачи 2026</b>. Оранжевый фон — добавлены ресурсы в плане. Нажми на заголовок любого ДЦ или «Итого» для сортировки.'}</div>${orderNote}<div style="overflow:auto;max-height:560px"><table class="product-table"><thead><tr><th>№</th><th>Категория</th><th>Продукт</th>${header}${totalHeader}</th></tr></thead><tbody>${body}</tbody><tfoot><tr class="cat-total"><td></td><td colspan="2"><b>Итого выбранное</b></td>${footerCells}<td><b>${nf.format(footerTotal)}</b></td></tr></tfoot></table></div>`:`<div class="note">Для выбранных категорий нет строк.</div>`}`;
+  $('#detailsClose').onclick=()=>{$('#details').classList.remove('show');tip.classList.remove('show')};
+  bindProductTableSort();
+  $$('[data-product-tip]').forEach(el=>{el.addEventListener('mouseenter',e=>{tip.textContent=el.dataset.productTip;tip.style.left=e.clientX+14+'px';tip.style.top=e.clientY+14+'px';tip.classList.add('show')});el.addEventListener('mousemove',e=>{tip.style.left=e.clientX+14+'px';tip.style.top=e.clientY+14+'px'});el.addEventListener('mouseleave',()=>tip.classList.remove('show'))});
+  if(autoScroll)$('#details').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),3500)}
+function buildSmallProductParts(sourceIndex,amount){
+  const pool=DATA.products
+    .filter(p=>isSmallProductCandidate(p)&&isSmallProductAtDc(p,sourceIndex))
+    .map(p=>({product:p.name,value:Math.max(0,smallProductValue(p.name,sourceIndex))}))
+    .filter(x=>x.value>0)
+    .sort((a,b)=>b.value-a.value);
+  const totalPool=pool.reduce((s,x)=>s+x.value,0);
+  const target=Math.floor(Number(amount)||0);
+  if(target<=0||totalPool<=0||target>totalPool+1e-9)return [];
+  const parts=pool.map(x=>({product:x.product,value:x.value,desired:target*x.value/totalPool,amount:Math.floor(target*x.value/totalPool)}));
+  let remaining=target-parts.reduce((s,x)=>s+x.amount,0);
+  parts.sort((a,b)=>((b.desired-Math.floor(b.desired))-(a.desired-Math.floor(a.desired)))|| (b.value-a.value));
+  for(const part of parts){
+    if(remaining<=0)break;
+    if(part.amount<Math.floor(part.value)){part.amount+=1;remaining--}
+  }
+  if(remaining>0){
+    for(const part of parts){
+      if(remaining<=0)break;
+      const room=Math.floor(part.value-part.amount);
+      if(room>0){const add=Math.min(room,remaining);part.amount+=add;remaining-=add;}
+    }
+  }
+  return parts.filter(x=>x.amount>0).map(x=>({product:x.product,amount:x.amount}));
+}
+function openMoveModal(kind,key,cat,src,dst){
+  if(scenarioState.previewTransfers){toast('Просмотр варианта: переносы заблокированы. Нажмите «Выйти из просмотра».');return}
+  const si=idx(src),di=idx(dst);
+  let available=0,objectLabel='';
+  if(kind==='product'){
+    available=Math.max(0,productValue(key,si));
+    objectLabel=key;
+  }else if(kind==='smallProducts'){
+    available=Math.max(0,smallProductsValue(si));
+    objectLabel=SMALL_PRODUCTS;
+  }else if(kind==='orderProduct'){
+    available=Math.max(0,orderProductValue(key,si));
+    objectLabel=`${key} · Заказ`;
+  }else{
+    available=Math.max(0,categoryValue(cat,si));
+    objectLabel=cat;
+  }
+  if(available<=0){toast(`В ${src} нет доступных ресурсов для переноса: «${objectLabel}».`);return}
+  $('#moveTitle').textContent=kind==='product'?'Перенос продукта':(kind==='smallProducts'?'Перенос Small Products':(kind==='orderProduct'?'Перенос заказа по продукту':'Перенос категории'));
+  $('#moveText').textContent=`${objectLabel}: ${dcLabel(src)} → ${dcLabel(dst)}`;
+  $('#moveAmount').value=available;$('#moveAmount').max=available;
+  const orderReminder=getOrderReminder(kind,key,cat,si);
+  const smallHint=kind==='smallProducts'?'<div style="margin-bottom:8px;padding:8px 9px;border:1px solid var(--line);border-radius:7px;color:var(--muted);background:var(--panel2);line-height:1.45">Перенос распределится между продуктами, которые сейчас входят в Small Products на исходном ДЦ. Состав группы определяется по порогу 8k vCPU в каждом ДЦ.</div>':'';
+  $('#moveHint').innerHTML=`${orderReminder?`<div style="margin-bottom:8px;padding:8px 9px;border:1px solid var(--bad);border-radius:7px;color:var(--bad);background:rgba(200,63,77,.06);font-weight:600;line-height:1.45">${orderReminder}</div>`:''}${smallHint}<div>В источнике: ${nf.format(available)} vCPU. Максимум для переноса: ${nf.format(available)} vCPU. Ограничение свободной мощности целевого ДЦ не применяется.</div>`;
+  $('#moveModal').classList.add('show');
+  const close=()=>$('#moveModal').classList.remove('show');
+  const confirm=()=>{
+    const amount=Math.floor(Number($('#moveAmount').value));
+    const avNow=kind==='product'?productValue(key,si):(kind==='smallProducts'?smallProductsValue(si):(kind==='orderProduct'?orderProductValue(key,si):categoryValue(cat,si)));
+    if(!Number.isFinite(amount)||amount<1){toast('Укажите положительное целое количество ядер.');return}
+    if(amount>avNow){$('#moveAmount').value=avNow;toast(`В источнике доступно только ${nf.format(avNow)} vCPU.`);return}
+    const parts=kind==='smallProducts'?buildSmallProductParts(si,amount):null;
+    if(kind==='smallProducts'&&parts.reduce((sum,x)=>sum+x.amount,0)!==amount){toast('Не удалось корректно распределить выбранный объём между Small Products.');return}
+    const srcBefore=dynamicLoad(si),dstBefore=dynamicLoad(di);
+    const t={id:'tr_'+Date.now()+'_'+Math.random().toString(36).slice(2),time:new Date().toLocaleString('ru-RU'),kind,product:(kind==='product'||kind==='orderProduct')?key:null,cat:kind==='smallProducts'?SMALL_PRODUCTS:cat,src,dst,si,di,amount,parts,srcBefore,dstBefore,srcAfter:0,dstAfter:0,srcDelta:-amount,dstDelta:amount,status:'Активен'};
+    workingTransfers().push(t);
+    t.srcAfter=dynamicLoad(si);t.dstAfter=dynamicLoad(di);
+    close();renderAll();toast(`Перенесено ${nf.format(amount)} vCPU: ${src} → ${dst}`);
+  };
+  $('#moveConfirm').onclick=confirm;$('#moveCancel').onclick=close;
+  $('#moveAmount').onkeydown=e=>{if(e.key==='Enter')confirm();if(e.key==='Escape')close()};
+  $('#moveAmount').oninput=()=>{};
+  setTimeout(()=>{$('#moveAmount').focus();$('#moveAmount').select()},0);
+}
+
+function scenarioCloneTransfer(t){return {...t,parts:Array.isArray(t.parts)?t.parts.map(x=>({...x})):t.parts,id:'sc_'+Date.now()+'_'+Math.random().toString(36).slice(2),scenario:null,status:'Активен'}}
+function scenarioBaseFree(i){return Number(DATA.free?.[i]||0)}
+function scenarioProductValue(productName,i,transfers){
+  let v=Number(DATA.products.find(p=>p.name===productName)?.a?.[i]||0);
+  for(const t of transfers||[])if(t.status==='Активен'){
+    const kind=transferKind(t);
+    if(kind==='product'&&t.product===productName){
+      if(t.si===i)v-=Number(t.amount)||0;
+      if(t.di===i)v+=Number(t.amount)||0;
+    }
+    if(kind==='smallProducts'&&Array.isArray(t.parts)){
+      const part=t.parts.find(x=>x&&x.product===productName);
+      if(part){const amt=Number(part.amount)||0;if(t.si===i)v-=amt;if(t.di===i)v+=amt;}
+    }
+  }
+  return v
+}
+function scenarioSmallProductsValue(i,transfers){
+  return DATA.products.reduce((sum,p)=>{
+    if(!isSmallProductCandidate(p))return sum;
+    const v=scenarioProductValue(p.name,i,transfers);
+    return sum+(v>0&&v<SMALL_PRODUCT_THRESHOLD?v:0);
+  },0);
+}
+function scenarioTransferValue(kind,key,cat,i,transfers){
+  if(kind==='smallProducts')return scenarioSmallProductsValue(i,transfers);
+  let v=kind==='product' ? scenarioProductValue(key,i,transfers) : (kind==='orderProduct' ? Number(DATA.products.find(p=>p.name===key)?.p?.[i]||0) : Number(DATA.categories.find(c=>c.name===cat)?.v?.[i]||0));
+  for(const t of transfers||[]){if(t.status!=='Активен')continue;if(transferKind(t)!==kind)continue;if((kind==='product'||kind==='orderProduct')&&t.product!==key)continue;if(kind==='category'&&t.cat!==cat)continue;if(t.si===i)v-=Number(t.amount)||0;if(t.di===i)v+=Number(t.amount)||0}
+  return v
+}
+function validateScenarioTransfers(transfers){
+  const ts=(transfers||[]).filter(t=>t&&t.status==='Активен');
+  const freeBy=DATA.dcs.map((_,i)=>scenarioBaseFree(i));
+  const applied=[];
+  for(let n=0;n<ts.length;n++){
+    const t=ts[n],kind=transferKind(t),key=t.product,cat=t.cat,si=Number(t.si),di=Number(t.di),amount=Number(t.amount);
+    if(!Number.isInteger(si)||!Number.isInteger(di)||si<0||di<0||si>=DATA.dcs.length||di>=DATA.dcs.length) return {ok:false,index:n,error:'некорректный источник или приёмник'};
+    if(si===di)return {ok:false,index:n,error:'источник и приёмник совпадают'};
+    if(!Number.isFinite(amount)||amount<=0)return {ok:false,index:n,error:'некорректное количество ядер'};
+    if(kind==='product'&&!DATA.products.some(p=>p.name===key))return {ok:false,index:n,error:`продукт «${key}» не найден`};
+    if(kind==='orderProduct'&&!DATA.products.some(p=>p.name===key&&p.order))return {ok:false,index:n,error:`заказ для продукта «${key}» не найден`};
+    if(kind==='smallProducts'){
+      if(!Array.isArray(t.parts)||!t.parts.length)return {ok:false,index:n,error:'у переноса Small Products отсутствует детализация по продуктам'};
+      const partSum=t.parts.reduce((sum,p)=>sum+(Number(p?.amount)||0),0);
+      if(partSum!==amount)return {ok:false,index:n,error:'сумма детализации Small Products не совпадает с объёмом переноса'};
+      for(const part of t.parts){
+        const p=DATA.products.find(x=>x.name===part?.product);
+        const partAmount=Number(part?.amount)||0;
+        if(!p||!isSmallProductCandidate(p))return {ok:false,index:n,error:`продукт Small Products «${part?.product||''}» не найден или не может быть агрегирован`};
+        if(!Number.isInteger(partAmount)||partAmount<=0)return {ok:false,index:n,error:`некорректный объём для «${part.product}»`};
+        const before=scenarioProductValue(p.name,si,applied);
+        if(!(before>0&&before<SMALL_PRODUCT_THRESHOLD))return {ok:false,index:n,error:`«${p.name}» больше не относится к Small Products на ${DATA.dcs[si]} (текущее значение ${nf.format(before)} vCPU)`};
+        if(partAmount>before+1e-9)return {ok:false,index:n,error:`для «${p.name}» на ${DATA.dcs[si]} доступно только ${nf.format(before)} vCPU`};
+      }
+    }else if(kind!=='product'&&kind!=='orderProduct'&&!DATA.categories.some(c=>c.name===cat))return {ok:false,index:n,error:`категория «${cat}» не найдена`};
+    const available=kind==='smallProducts'?scenarioSmallProductsValue(si,applied):scenarioTransferValue(kind,key,cat,si,applied);
+    if(amount>available+1e-9)return {ok:false,index:n,error:`на ${DATA.dcs[si]} недостаточно ресурсов объекта (доступно ${nf.format(available)} vCPU)`};
+    // Перелимит по емкости приемника разрешен: сценарии могут намеренно
+    // показывать перегруженный ДЦ. Ограничение остается только на наличие
+    // переносимого ресурса у источника.
+    freeBy[si]+=amount;freeBy[di]-=amount;applied.push(t);
+  }
+  return {ok:true,freeBy}
+}
+function scenarioSave(){
+  if(scenarioState.previewTransfers){toast('Сначала выйдите из просмотра варианта.');return}
+  if(scenarioState.editingSlot!=null){toast('Сначала завершите редактирование текущего варианта.');return}
+  const transfers=state.transfers.filter(t=>t.status==='Активен').map(t=>({...t,scenario:null}));
+  if(!transfers.length){toast('Нет новых переносов для сохранения.');return}
+  const slot=scenarioState.scenarios.findIndex(x=>!x);
+  if(slot<0){toast('Все 3 варианта уже сохранены. Используйте «Изменить» у нужного варианта.');return}
+  const check=validateScenarioTransfers(transfers);if(!check.ok){toast(`Вариант не сохранён: перенос №${check.index+1}: ${check.error}.`);return}
+  scenarioState.scenarios[slot]={id:`scenario_${slot+1}`,name:`Вариант ${slot+1}`,saved:true,transfers:transfers.map(scenarioCloneTransfer)};
+  state.transfers=[];scenarioState.selected=null;scenarioState.previewTransfers=null;
+  renderAll();toast(`Вариант ${slot+1} сохранён. Распределение возвращено к AS IS + Выдачи2026.`)
+}
+function scenarioPreview(slot){
+  if(scenarioState.editingSlot!=null){toast('Сначала завершите редактирование варианта.');return}
+  const sc=scenarioState.scenarios[slot];if(!sc)return;
+  scenarioState.selected=slot;scenarioState.previewTransfers=sc.transfers.map(t=>({...t,status:'Активен'}));
+  renderAll();toast(`${sc.name}: режим просмотра. Переносы временно заблокированы.`)
+}
+function scenarioExitPreview(){if(!scenarioState.previewTransfers)return;scenarioState.selected=null;scenarioState.previewTransfers=null;renderAll();toast('Просмотр закрыт. Показано базовое состояние AS IS + Выдачи2026.')}
+function scenarioStartEdit(slot){
+  if(scenarioState.previewTransfers){toast('Сначала выйдите из просмотра варианта.');return}
+  if(scenarioState.editingSlot!=null){toast('Сначала завершите текущее редактирование.');return}
+  const sc=scenarioState.scenarios[slot];if(!sc)return;
+  scenarioState.editingSlot=slot;
+  scenarioState.editingTransfers=sc.transfers.map(scenarioCloneTransfer);
+  scenarioState.selected=null;
+  renderAll();toast(`${sc.name}: режим редактирования. Изменения пока не попадают в журнал.`)
+}
+function scenarioResetEdit(){
+  const slot=scenarioState.editingSlot;if(slot==null)return;
+  const sc=scenarioState.scenarios[slot];if(!sc)return;
+  scenarioState.editingTransfers=sc.transfers.map(scenarioCloneTransfer);
+  renderAll();toast('Несохранённые изменения сброшены. Восстановлена последняя сохранённая версия.')
+}
+function scenarioCancelEdit(){
+  if(scenarioState.editingSlot==null)return;
+  const name=scenarioState.scenarios[scenarioState.editingSlot]?.name||'Вариант';
+  scenarioState.editingSlot=null;scenarioState.editingTransfers=null;renderAll();toast(`${name}: редактирование отменено.`)
+}
+function scenarioSaveEdit(){
+  const slot=scenarioState.editingSlot;if(slot==null)return;
+  const sc=scenarioState.scenarios[slot];if(!sc)return;
+  const transfers=(scenarioState.editingTransfers||[]).filter(t=>t&&t.status==='Активен');
+  const check=validateScenarioTransfers(transfers);
+  if(!check.ok){toast(`Изменения не сохранены: перенос №${check.index+1}: ${check.error}.`);return}
+  sc.transfers=transfers.map(scenarioCloneTransfer);
+  scenarioState.editingSlot=null;scenarioState.editingTransfers=null;scenarioState.selected=null;scenarioState.previewTransfers=null;
+  renderAll();toast(`${sc.name}: изменения сохранены. Показано базовое состояние AS IS + Выдачи2026.`)
+}
+function scenarioResetAll(){
+  if(scenarioState.previewTransfers){toast('Сначала выйдите из просмотра варианта.');return}
+  if(scenarioState.editingSlot!=null){toast('Сначала завершите или отмените редактирование варианта.');return}
+  if(!scenarioState.scenarios.some(Boolean)){toast('Сохранённых вариантов уже нет.');return}
+  if(!confirm('Сбросить все сохранённые варианты? Все 3 слота будут очищены. Основной журнал переносов не изменится.'))return;
+  scenarioState.scenarios=[null,null,null];
+  scenarioState.selected=null;
+  scenarioState.previewTransfers=null;
+  renderAll();
+  toast('Все варианты сброшены. Показано базовое состояние AS IS + Выдачи2026.');
+}
+function scenarioApply(){
+  const slot=scenarioState.selected,sc=slot==null?null:scenarioState.scenarios[slot];if(!sc)return;
+  if(scenarioState.editingSlot!=null){toast('Сначала завершите редактирование варианта.');return}
+  if(state.transfers.some(t=>t.status==='Активен')){toast('Нельзя применить вариант поверх активных переносов. Сначала отмените их в журнале.');return}
+  const check=validateScenarioTransfers(sc.transfers);if(!check.ok){toast(`Вариант не применён: перенос №${check.index+1}: ${check.error}.`);return}
+  const applied=[];
+  for(const original of sc.transfers){
+    const t={...original,id:'tr_'+Date.now()+'_'+Math.random().toString(36).slice(2),time:new Date().toLocaleString('ru-RU'),scenario:sc.name,status:'Активен'};
+    t.srcBefore=dynamicLoad(t.si);t.dstBefore=dynamicLoad(t.di);state.transfers.push(t);t.srcAfter=dynamicLoad(t.si);t.dstAfter=dynamicLoad(t.di);applied.push(t)
+  }
+  scenarioState.selected=null;scenarioState.previewTransfers=null;renderAll();openJournal();toast(`${sc.name} применён: ${applied.length} перенос(ов) добавлено в журнал.`)
+}
+function renderScenarios(){
+  const preview=scenarioState.selected!=null&&scenarioState.previewTransfers;
+  const editing=scenarioState.editingSlot!=null&&scenarioState.editingTransfers;
+  const cards=scenarioState.scenarios.map((sc,i)=>sc
+    ? `<div class="scenario-card ${scenarioState.selected===i?'selected':''} ${scenarioState.editingSlot===i?'selected':''}"><div class="scenario-info"><b>${sc.name}</b><span>${sc.transfers.length} перенос(ов) · сохранён</span></div><div class="scenario-actions">${scenarioState.editingSlot===i
+      ? '<button class="primary" data-scenario-save-edit>Сохранить изменения</button><button data-scenario-reset-edit>Сбросить изменения</button><button data-scenario-cancel-edit>Отменить</button>'
+      : `<button ${editing?'disabled':''} data-scenario-preview="${i}">Просмотр</button><button ${editing?'disabled':''} data-scenario-edit="${i}">Изменить</button>${scenarioState.selected===i?'<button class="primary" data-scenario-apply>Применить</button>':''}`
+    }</div></div>`
+    : `<div class="scenario-card empty"><div class="scenario-info"><b>Вариант ${i+1}</b><span>не сохранён</span></div></div>`).join('');
+  const working=state.transfers.filter(t=>t.status==='Активен').length;
+  $('#scenarioPanel').innerHTML=`<div class="scenario-head"><div><b>Варианты распределения</b><div class="scenario-note">База варианта: AS IS + Выдачи2026. Сохранённый вариант не попадает в журнал до «Применить». Редактирование выполняется в рабочей копии.</div></div><div class="scenario-actions"><button ${(preview||editing)?'disabled':''} data-scenario-save>Сохранить вариант${working?' · '+working:''}</button><button ${(preview||editing||!scenarioState.scenarios.some(Boolean))?'disabled':''} data-scenario-reset-all>Сбросить все варианты</button>${preview?'<button data-scenario-exit>Выйти из просмотра</button>':''}</div></div><div class="scenario-list">${cards}</div>${preview?`<div class="scenario-preview">Просмотр: ${scenarioState.scenarios[scenarioState.selected].name}. Изменение распределения отключено.</div>`:''}${editing?`<div class="scenario-preview">Редактирование: ${scenarioState.scenarios[scenarioState.editingSlot].name}. Изменения не попадут в журнал, пока не нажать «Сохранить изменения».</div>`:''}`;
+  $('#scenarioPanel').querySelector('[data-scenario-save]')?.addEventListener('click',scenarioSave);
+  $('#scenarioPanel').querySelector('[data-scenario-reset-all]')?.addEventListener('click',scenarioResetAll);
+  $('#scenarioPanel').querySelector('[data-scenario-exit]')?.addEventListener('click',scenarioExitPreview);
+  $$('#scenarioPanel [data-scenario-preview]').forEach(b=>b.addEventListener('click',()=>scenarioPreview(Number(b.dataset.scenarioPreview))));
+  $$('#scenarioPanel [data-scenario-edit]').forEach(b=>b.addEventListener('click',()=>scenarioStartEdit(Number(b.dataset.scenarioEdit))));
+  $('#scenarioPanel').querySelector('[data-scenario-save-edit]')?.addEventListener('click',scenarioSaveEdit);
+  $('#scenarioPanel').querySelector('[data-scenario-reset-edit]')?.addEventListener('click',scenarioResetEdit);
+  $('#scenarioPanel').querySelector('[data-scenario-cancel-edit]')?.addEventListener('click',scenarioCancelEdit);
+  $('#scenarioPanel').querySelector('[data-scenario-apply]')?.addEventListener('click',scenarioApply);
+}
+
+function renderJournal(){const body=$('#journalBody');const rows=[...state.transfers.map(t=>`<tr><td>${esc(t.time)}</td><td>${esc(t.product||t.cat)}</td><td>${esc(dcLabel(t.src))} → ${esc(dcLabel(t.dst))}</td><td>${nf.format(t.amount)}</td><td>${nf.format(t.srcBefore)}</td><td>${nf.format(t.dstBefore)}</td><td>${nf.format(t.srcAfter)} <span class="delta-neg">(${t.srcDelta})</span></td><td>${nf.format(t.dstAfter)} <span class="delta-pos">(+${t.dstDelta})</span></td><td>${esc(t.scenario||'')}</td><td><button data-undo="${t.id}" ${t.status!=='Активен'?'disabled':''}>${t.status==='Активен'?'Отменить':'Отменён'}</button></td></tr>`),...(state.adjustments||[]).map(a=>`<tr><td>${esc(a.time)}</td><td>${esc(a.product)}</td><td>Корректировка · ${esc(dcLabel(a.dc))} · ${a.effect==='consume'?'Потребляет':'Высвобождает'}</td><td>${nf.format(a.amount)}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><button data-undo-adjust="${a.id}" ${a.status!=='Активен'?'disabled':''}>${a.status==='Активен'?'Отменить':'Отменён'}</button></td></tr>`)].join('');if(!rows){body.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:28px">Операций пока нет</td></tr>';return}body.innerHTML=rows;$$('[data-undo]').forEach(b=>b.onclick=()=>undoTransfer(b.dataset.undo));$$('[data-undo-adjust]').forEach(b=>b.onclick=()=>{const a=state.adjustments.find(x=>x.id===b.dataset.undoAdjust);if(!a||a.status!=='Активен')return;a.status='Отменён';renderAll();renderJournal();toast(`Корректировка «${a.product}» отменена.`)})}
+function openJournal(){renderJournal();$('#journalModal').classList.add('show')}
+function cancelAllTransfers(){
+  const active=state.transfers.filter(t=>t.status==='Активен');
+  if(!active.length){toast('Активных переносов нет.');return}
+  if(!confirm(`Отменить все активные переносы?
+Будет отменено: ${active.length} операций.`))return;
+  active.forEach(t=>t.status='Отменён');
+  renderAll();renderJournal();
+  toast(`Отменены все переносы: ${active.length} операций.`);
+}
+function clearJournalHistory(){
+  const beforeT=state.transfers.length,beforeA=(state.adjustments||[]).length;
+  const cancelledT=state.transfers.filter(t=>t.status!=='Активен').length;
+  const cancelledA=(state.adjustments||[]).filter(a=>a.status!=='Активен').length;
+  if(!cancelledT&&!cancelledA){toast('В истории нет отменённых операций для очистки.');return}
+  if(!confirm(`Очистить историю отменённых операций?\nБудет удалено: ${cancelledT+cancelledA} записей.`))return;
+  state.transfers=state.transfers.filter(t=>t.status==='Активен');
+  state.adjustments=(state.adjustments||[]).filter(a=>a.status==='Активен');
+  renderAll();renderJournal();
+  toast(`История очищена: удалено ${beforeT-state.transfers.length + beforeA-state.adjustments.length} записей.`);
+}
+function undoTransfer(id){
+  const t=state.transfers.find(x=>x.id===id);
+  if(!t||t.status!=='Активен')return;
+  t.status='Отменён';
+  renderAll();renderJournal();
+  toast(`Перенос ${nf.format(t.amount)} vCPU отменён.`);
+}
+function csvEsc(v){const s=String(v??'');return`"${s.replace(/"/g,'""')}"`}
+function exportJournal(){const head=['Время','Объект','Источник','Приёмник','Ядра','Источник до','Приёмник до','Источник после','Дельта источника','Приёмник после','Дельта приёмника','Сценарий','Статус'];const rows=state.transfers.map(t=>[t.time,(t.product||t.cat),t.src,t.dst,t.amount,t.srcBefore,t.dstBefore,t.srcAfter,t.srcDelta,t.dstAfter,t.dstDelta,t.scenario||'',t.status]);const csv='\ufeff'+[head,...rows].map(r=>r.map(csvEsc).join(';')).join('\r\n');downloadBlob(csv,'transfer_journal.csv','text/csv;charset=utf-8')}
+function exportScenario(){const date=$('#exportDate').value||new Date().toISOString().slice(0,10),name=($('#exportName').value||'scenario').replace(/[^\w\-а-яА-ЯёЁ]+/g,'_');const lines=[['Название продукта','Категория',...DATA.dcs.map(d=>DC_ALIAS[d]),'Total']];for(const p of DATA.products){const row=[p.name,p.cat,...p.a.map((v,i)=>v+Number(p.p?.[i]||0))];row.push(total(row.slice(2)));lines.push(row)}lines.push(['Total','',...DATA.dcs.map((d,i)=>dynamicLoad(i)),total(DATA.dcs.map((d,i)=>dynamicLoad(i)))]);const csv='\ufeff'+lines.map(r=>r.map(csvEsc).join(';')).join('\r\n');downloadBlob(csv,`ASIS_${date}_${name}.csv`,'text/csv;charset=utf-8')}
+function downloadBlob(content,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function normArray(value,n,fallback){
+  const src=Array.isArray(value)?value:[];
+  const fb=Array.isArray(fallback)?fallback:[];
+  return Array.from({length:n},(_,i)=>Number(src[i]??fb[i]??0)||0);
+}
+function buildJson(){return JSON.stringify({schemaVersion:4,sourceASIS:'Копия Стаканчики по ДЦ - Загрузка_ Распределение 09.09.csv',sourcePlan:'Стаканчики по ДЦ - last выдачи2026 (2).csv',dcs:DATA.dcs,current:DATA.current,plan:DATA.plan,order:DATA.order,power:DATA.power,shed:DATA.shed,free:DATA.free,cloud:DATA.cloudAbs,categories:DATA.categories,products:DATA.products,transfers:state.transfers,adjustments:state.adjustments,scenarios:scenarioState.scenarios,state:{cat:state.cat,product:state.product,geo:state.geo,dc:state.dc,dark:state.dark}},null,2)}
+function openDataFile(){$('#jsonBox').value=buildJson();$('#dataModal').classList.add('show')}
+function openUpload(){$('#uploadModal').classList.add('show')}
+function ensureOrderProduct(resetOrderCategory=false){
+  // Миграция со старой модели: синтетический продукт «Заказ» удаляется, а заказ становится виртуальной категорией.
+  const legacyOrderProduct=DATA.products.find(p=>p.synthetic&&p.name==='Заказ');
+  DATA.products=DATA.products.filter(p=>!(p.synthetic&&p.name==='Заказ'));
+  for(const p of DATA.products)p.order=!!p.order||(Array.isArray(p.p)&&p.p.some(v=>Number(v)>0));
+  const order=Array.isArray(DATA.order)?DATA.order.slice():Array(DATA.dcs.length).fill(0);
+  const existing=DATA.categories.filter(c=>c.name!=='Заказ');
+  const oldOrder=DATA.categories.find(c=>c.name==='Заказ');
+  let orderValues;
+  if(resetOrderCategory || !oldOrder){
+    orderValues=order;
+  }else{
+    orderValues=normArray(oldOrder.v,DATA.dcs.length,order);
+  }
+  existing.push({name:'Заказ',v:orderValues});
+  DATA.categories=existing;
+  return legacyOrderProduct;
+}
+function rebuildLegacyTransfers(){
+  // Старые JSON не содержали state.transfers, но могли содержать уже изменённые значения категорий.
+  // Восстанавливаем чистый baseline из AS IS / заказа и строим эквивалентный набор переносов по дельтам.
+  const baseline={};
+  for(const p of DATA.products){
+    baseline[p.cat]??=Array(DATA.dcs.length).fill(0);
+    for(let i=0;i<DATA.dcs.length;i++)baseline[p.cat][i]+=Number(p.a?.[i]||0);
+  }
+  baseline['Заказ']=Array(DATA.dcs.length).fill(0).map((_,i)=>Number(DATA.order?.[i]||0));
+  const transfers=[];
+  for(const cat of DATA.categories.map(c=>c.name)){
+    const saved=DATA.categories.find(c=>c.name===cat)?.v||[];
+    const base=baseline[cat]||Array(DATA.dcs.length).fill(0);
+    const neg=[],pos=[];
+    for(let i=0;i<DATA.dcs.length;i++){
+      const diff=(Number(saved[i]||0)-Number(base[i]||0));
+      if(diff<0)neg.push({i,amt:-diff});
+      if(diff>0)pos.push({i,amt:diff});
+    }
+    let a=0,b=0;
+    while(a<neg.length&&b<pos.length){
+      const amt=Math.min(neg[a].amt,pos[b].amt);
+      if(amt>0)transfers.push({id:'legacy_'+cat+'_'+a+'_'+b+'_'+transfers.length,time:'Восстановлено из JSON',cat,src:DATA.dcs[neg[a].i],dst:DATA.dcs[pos[b].i],si:neg[a].i,di:pos[b].i,amount:amt,srcBefore:0,dstBefore:0,srcAfter:0,dstAfter:0,srcDelta:-amt,dstDelta:amt,status:'Активен'});
+      neg[a].amt-=amt;pos[b].amt-=amt;
+      if(neg[a].amt<=0.000001)a++;
+      if(pos[b].amt<=0.000001)b++;
+    }
+  }
+  return transfers;
+}
+function loadJsonText(text){
+  const d=JSON.parse(text);
+  if(!d||!Array.isArray(d.dcs)||!Array.isArray(d.products))throw Error('Некорректный JSON: отсутствуют обязательные данные.');
+  const n=d.dcs.length;
+  if(!n)throw Error('Некорректный JSON: список ДЦ пуст.');
+  DATA.dcs=d.dcs.slice();
+  DATA.current=normArray(d.current,n);
+  DATA.plan=normArray(d.plan,n);
+  DATA.power=normArray(d.power,n);
+  DATA.shed=normArray(d.shed,n);
+  DATA.order=normArray(d.order,n,DATA.plan);
+  const legacyFreeFallback=DATA.dcs.map(d=>LEGACY_FREE_BY_DC[d]??0);
+  DATA.free=Array.isArray(d.free)?normArray(d.free,n,legacyFreeFallback):normArray(d.balance,n,legacyFreeFallback);
+  DATA.cloudAbs=normArray(d.cloud??d.cloudAbs,n);
+  DATA.cloud=DATA.cloudAbs.slice();
+  DATA.products=d.products.map(p=>({...p,a:normArray(p.a,n),p:normArray(p.p,n)}));
+  DATA.categories=Array.isArray(d.categories)?d.categories.map(c=>({name:String(c.name||''),v:normArray(c.v,n)})).filter(c=>c.name):[];
+  const hasFree=Array.isArray(d.free);
+  ensureOrderProduct(false);
+  const savedTransfers=Array.isArray(d.transfers)?d.transfers.map(t=>({...t,kind:t.kind||'category'})):[];
+  // v2 JSON stored category values after active transfers were applied. Restore base state once.
+  if(Number(d.schemaVersion||1)===2){
+    for(const t of savedTransfers.filter(t=>t.status==='Активен')){
+      const c=DATA.categories.find(x=>x.name===t.cat);
+      if(!c)continue;
+      const amt=Number(t.amount)||0;
+      c.v[t.si]=(c.v[t.si]||0)+amt;
+      c.v[t.di]=(c.v[t.di]||0)-amt;
+    }
+  }
+  state.transfers=savedTransfers;
+  const loadedScenarios=Array.isArray(d.scenarios)?d.scenarios.slice(0,3):[];
+  scenarioState.scenarios=Array.from({length:3},(_,i)=>{
+    const sc=loadedScenarios[i];
+    if(!sc)return null;
+    return {
+      id:String(sc.id||`scenario_${i+1}`),
+      name:String(sc.name||`Вариант ${i+1}`),
+      saved:true,
+      transfers:Array.isArray(sc.transfers)?sc.transfers.map(t=>({...t,status:'Активен',scenario:null})):[]
+    };
+  });
+  while(scenarioState.scenarios.length<3)scenarioState.scenarios.push(null);
+  if(!scenarioState.scenarios.some(Boolean)&&Number(d.schemaVersion||1)<4){
+    scenarioState.scenarios=[null,null,null];
+  }
+  scenarioState.selected=null;
+  scenarioState.previewTransfers=null;
+  scenarioState.editingSlot=null;
+  scenarioState.editingTransfers=null;
+  if(!state.transfers.length && d.schemaVersion<2){
+    state.transfers=rebuildLegacyTransfers();
+    for(const t of state.transfers.filter(t=>t.status==='Активен')){
+      const c=DATA.categories.find(x=>x.name===t.cat);
+      if(!c)continue;
+      const amt=Number(t.amount)||0;
+      c.v[t.si]=(c.v[t.si]||0)+amt;
+      c.v[t.di]=(c.v[t.di]||0)-amt;
+    }
+  }
+  state.cat=Array.isArray(d.state?.cat)?d.state.cat.filter(x=>DATA.categories.some(c=>c.name===x)):[];
+  state.product=Array.isArray(d.state?.product)?d.state.product.filter(x=>DATA.products.some(p=>p.name===x)):[];
+  state.geo=Array.isArray(d.state?.geo)?d.state.geo.slice():[];
+  state.dc=Array.isArray(d.state?.dc)?d.state.dc.filter(x=>DATA.dcs.includes(x)):[];
+  state.dark=!!d.state?.dark;
+  document.body.classList.toggle('dark',state.dark);
+  const themeBtn=$('#theme');if(themeBtn)themeBtn.textContent=state.dark?'Светлая тема':'Темная тема';
+  tableSort={key:null,dir:1};
+  rebuildSmallProductSet();
+  renderAll();
+  $('#jsonBox').value=buildJson();
+  if(!hasFree)toast('Загружен старый JSON: поле «Свободно» в нём не сохранялось, поэтому восстановлено базовое значение из текущего шаблона. Для новых JSON значение сохраняется точно.');
+}
+function parseCSV(text){text=text.replace(/^\uFEFF/,'');const lines=text.split(/\r?\n/).filter(x=>x.trim());const delim=lines.some(l=>l.includes(';'))?';':',';return lines.map(l=>{const out=[];let cur='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(ch==='"'){if(q&&l[i+1]==='"'){cur+='"';i++}else q=!q}else if(ch===delim&&!q){out.push(cur);cur=''}else cur+=ch}out.push(cur);return out})}
+function num(v){if(v==null)return 0;v=String(v).replace(/\u00a0/g,'').replace(/\s/g,'').replace(',','.');const n=Number(v);return Number.isFinite(n)?n:0}
+function loadAsisText(text){const rows=parseCSV(text);let header=rows.findIndex(r=>r.some(x=>/название продукта/i.test(x))&&r.some(x=>/катег/i.test(x)));if(header<0)header=rows.findIndex(r=>r.some(x=>/название продукта/i.test(x)));if(header<0)throw Error('Не найден заголовок AS IS');const h=rows[header];const ni=h.findIndex(x=>/название продукта/i.test(x)),ci=h.findIndex(x=>/катег/i.test(x));const dcCols=DATA.dcs.map(d=>h.findIndex(x=>String(x).trim().toUpperCase()===DC_ALIAS[d].toUpperCase()));const prods=[];for(const r of rows.slice(header+1)){const name=(r[ni]||'').trim();if(!name||/^total$/i.test(name)||/запас реком/i.test(name))continue;const cat=(r[ci]||'Other').trim()||'Other';const a=dcCols.map(i=>i>=0?num(r[i]):0);prods.push({name,cat,a,p:Array(DATA.dcs.length).fill(0),order:false})}if(!prods.length)throw Error('В AS IS не найдены продукты');DATA.products=prods;const cats=[...new Set(prods.map(p=>p.cat))];DATA.categories=cats.map(name=>({name,v:DATA.dcs.map((_,i)=>prods.filter(p=>p.cat===name).reduce((s,p)=>s+p.a[i],0))}));DATA.current=DATA.dcs.map((_,i)=>prods.reduce((s,p)=>s+p.a[i],0));DATA.order=Array(DATA.dcs.length).fill(0);state.transfers=[];scenarioState.scenarios=[null,null,null];scenarioState.selected=null;scenarioState.previewTransfers=null;scenarioState.editingSlot=null;scenarioState.editingTransfers=null;ensureOrderProduct(true);rebuildSmallProductSet();state.cat=[];state.product=[];renderAll();}
+
+function loadPlanText(text){
+  const rows=parseCSV(text);
+  const normPlan=s=>String(s??'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+  const productHeader=rows.findIndex(r=>r.some(x=>normPlan(x)==='ПРОДУКТ'));
+  if(productHeader<0)throw Error('Не найден заголовок «Продукт» в файле «Выдачи».');
+
+  const h=rows[productHeader];
+  const ni=h.findIndex(x=>normPlan(x)==='ПРОДУКТ');
+  if(ni<0)throw Error('Не найден столбец «Продукт» в файле «Выдачи».');
+  const dcCols=DATA.dcs.map(d=>{
+    const alias=normPlan(DC_ALIAS[d]||d);
+    return h.findIndex(x=>normPlan(x)===alias);
+  });
+  const missed=DATA.dcs.filter((d,i)=>dcCols[i]<0);
+  if(missed.length)throw Error('Не найдены колонки ДЦ в файле: '+missed.join(', '));
+
+  const rowValues=r=>dcCols.map(c=>c>=0?num(r[c]):0);
+
+  // «Итого заказ» — граница блока продуктов.
+  // Всё, что находится после этой строки, является сводными/служебными показателями
+  // и никогда не должно попадать в распределение заказа по продуктам.
+  const orderRowIndex=rows.findIndex((r,i)=>i>productHeader&&/^ИТОГО ЗАКАЗ\s*:?/i.test(normPlan(r[ni]||'')));
+  if(orderRowIndex<0)throw Error('В файле не найдена строка «Итого заказ».');
+  const orderRow=rows[orderRowIndex];
+
+  const summaryRowFrom=rx=>rows.slice(orderRowIndex+1).find(r=>rx.test(normPlan(r[ni]||'')));
+  const powerRow=summaryRowFrom(/^ПОЛУЧИМ ДО КОНЦА ГОДА\s*:?/i);
+  const shedRow=summaryRowFrom(/^СДУЕТ ПОИСК\s*:?/i);
+  const freeRow=summaryRowFrom(/^ИТОГО БЕЗ ПЕРЕДВИЖЕНИЙ\s*:?/i);
+  const cloudRow=summaryRowFrom(/^СДАТЬ В ОБЛАКО\s*:?/i);
+  if(!freeRow)throw Error('В файле не найдена строка «Итого без передвижений».');
+
+  DATA.order=rowValues(orderRow);
+  DATA.plan=DATA.order.slice();
+  DATA.power=powerRow?rowValues(powerRow):Array(DATA.dcs.length).fill(0);
+  DATA.shed=shedRow?rowValues(shedRow):Array(DATA.dcs.length).fill(0);
+  DATA.free=rowValues(freeRow);
+  DATA.cloudAbs=cloudRow?rowValues(cloudRow):Array(DATA.dcs.length).fill(0);
+  DATA.cloud=DATA.cloudAbs.slice();
+
+  // Reset plan values for all non-synthetic products.
+  for(const p of DATA.products){p.p=Array(DATA.dcs.length).fill(0);p.order=false;}
+
+  // IMPORTANT: only rows BETWEEN the «Продукт» header and «Итого заказ» are products.
+  // This makes «Сдует Поиск», «Запас Реком + Поиск», «Получим до конца года»,
+  // «Итого без передвижений» and «Сдать в Облако» impossible to treat as products,
+  // regardless of their wording.
+  const productRows=rows.slice(productHeader+1,orderRowIndex);
+  const loadedOrderProducts=new Set();
+  for(const r of productRows){
+    const raw=String(r[ni]??'').trim();
+    if(!raw)continue;
+    const name=normPlan(raw);
+    if(name==='ПРОДУКТ')continue;
+    const targetName=(name==='ПОИСК ПО ДЗЕН')?'Поиск по Дзен Видео':raw.trim();
+    let target=DATA.products.find(p=>normPlan(p.name)===normPlan(targetName)&&!p.synthetic);
+    if(!target){
+      target={name:targetName,cat:'Other',a:Array(DATA.dcs.length).fill(0),p:Array(DATA.dcs.length).fill(0),order:false};
+      DATA.products.push(target);
+      if(!DATA.categories.some(c=>c.name==='Other'))DATA.categories.push({name:'Other',v:Array(DATA.dcs.length).fill(0)});
+    }
+    const vals=rowValues(r);
+    target.p=target.p.map((v,i)=>v+vals[i]);
+    if(vals.some(v=>Number(v)!==0))loadedOrderProducts.add(target);
+  }
+
+  // Реальные продукты с ненулевыми выдачами входят в виртуальную категорию «Заказ».
+  for(const p of DATA.products)p.order=loadedOrderProducts.has(p);
+  ensureOrderProduct(true);
+
+  // Контроль: сумма ТОЛЬКО продуктовых строк должна совпадать с «Итого заказ» по каждому ДЦ.
+  const sums=Array(DATA.dcs.length).fill(0);
+  for(const p of loadedOrderProducts)p.p.forEach((v,i)=>sums[i]+=Number(v)||0);
+  const diffs=sums.map((v,i)=>v-(DATA.order[i]||0));
+  if(diffs.some(v=>Math.round(v)!==0)){
+    const details=diffs.map((v,i)=>v?`${DATA.dcs[i]}: продукты ${nf.format(sums[i])} vs «Итого заказ» ${nf.format(DATA.order[i]||0)} (${v>0?'+':''}${Math.round(v)})`:'').filter(Boolean).join('; ');
+    throw Error('Распределение заказа по продуктам не сходится с «Итого заказ»: '+details);
+  }
+
+  state.transfers=[];
+  tableSort={key:null,dir:1};
+  rebuildSmallProductSet();
+  renderAll();
+}
+
+function bindDataUpload(){
+  const setup=(fileId,btnId,statusId,loader)=>{const input=$('#'+fileId),btn=$('#'+btnId),status=$('#'+statusId);btn.onclick=()=>{const f=input.files[0];if(!f){toast('Выберите файл.');return}f.text().then(t=>{try{loader(t);status.textContent='Загружено: '+f.name;toast('Данные загружены: '+f.name)}catch(err){status.textContent='Ошибка: '+err.message;toast(err.message)}}).catch(err=>{status.textContent='Ошибка чтения файла';toast('Не удалось прочитать файл.')})}};
+  setup('asisFile','asisLoadBtn','asisStatus',loadAsisText);setup('planFile','planLoadBtn','planStatus',loadPlanText);
+}
+bindDataUpload();$('#cancelAllTransfers').onclick=cancelAllTransfers;$('#clearJournalHistory').onclick=clearJournalHistory;$('#uploadClose').onclick=()=>$('#uploadModal').classList.remove('show');$('#dataClose').onclick=()=>$('#dataModal').classList.remove('show');$('#jsonDownload').onclick=()=>downloadBlob($('#jsonBox').value,'capacity_data.json','application/json;charset=utf-8');$('#jsonUpload').onclick=()=>$('#jsonFile').click();$('#jsonFile').onchange=()=>{const f=$('#jsonFile').files[0];if(!f)return;f.text().then(t=>{try{loadJsonText(t);toast('Данные загружены: '+f.name)}catch(err){toast(err.message||'Не удалось загрузить JSON')}}).catch(()=>toast('Не удалось прочитать JSON-файл.'));$('#jsonFile').value=''};$('#jsonCopy').onclick=()=>navigator.clipboard?.writeText($('#jsonBox').value).then(()=>toast('JSON скопирован.'));
+function validateRuntimeIntegrity(){
+  const n=DATA.dcs.length;
+  const arrays=['current','plan','power','free','shed','cloudAbs','order'];
+  const errors=[];
+  for(const key of arrays)if(!Array.isArray(DATA[key])||DATA[key].length!==n)errors.push(`${key}: ожидается ${n} значений`);
+  for(const p of DATA.products){
+    if(!Array.isArray(p.a)||p.a.length!==n)errors.push(`product ${p.name}: AS IS length`);
+    if(!Array.isArray(p.p)||p.p.length!==n)errors.push(`product ${p.name}: order length`);
+  }
+  return errors;
+}
+function fillAdjustmentProducts(query=''){const p=$('#adjProduct'),q=String(query).trim().toLocaleLowerCase('ru');const list=DATA.products.filter(x=>!x.synthetic&&x.name.toLocaleLowerCase('ru').includes(q));p.innerHTML=list.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');if(!list.length)p.innerHTML='<option value="">Ничего не найдено</option>';updateAdjPreview()}
+function openAdjustment(){if(scenarioState.previewTransfers||scenarioState.editingSlot!=null){toast('Корректировка доступна только в основном сценарии.');return}const d=$('#adjDc');$('#adjProductSearch').value='';fillAdjustmentProducts('');d.innerHTML=DATA.dcs.map((x,i)=>`<option value="${i}">${esc(dcLabel(x))}</option>`).join('');$('#adjAmount').value='';$('#adjPreview').textContent='Укажите объём для предпросмотра.';$('#adjustModal').classList.add('show')}
+function updateAdjPreview(){const i=Number($('#adjDc').value),q=Number($('#adjAmount').value)||0,e=$('#adjEffect').value,after=dynamicFree(i)+(e==='consume'?-q:q);$('#adjPreview').textContent=q>0?`Свободно на ${DATA.dcs[i]} после операции: ${nf.format(after)} vCPU${after<0?' — ⚠️ превышение ёмкости':''}`:'Укажите положительный объём.'}
+$('#adjProductSearch').addEventListener('input',e=>fillAdjustmentProducts(e.target.value));$('#adjProduct').addEventListener('change',updateAdjPreview);$('#adjDc').addEventListener('change',updateAdjPreview);$('#adjEffect').addEventListener('change',updateAdjPreview);$('#adjAmount').addEventListener('input',updateAdjPreview);$('#adjCancel').onclick=()=>$('#adjustModal').classList.remove('show');$('#adjustModal').addEventListener('click',e=>{if(e.target.id==='adjustModal')e.currentTarget.classList.remove('show')});$('#adjConfirm').onclick=()=>{const amount=Number($('#adjAmount').value),dcIndex=Number($('#adjDc').value),product=$('#adjProduct').value,effect=$('#adjEffect').value;if(!Number.isInteger(amount)||amount<=0){toast('Введите целое положительное количество ядер.');return}const a={id:'adj_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),time:new Date().toLocaleString('ru-RU'),product,dcIndex,dc:DATA.dcs[dcIndex],amount,effect,status:'Активен'};state.adjustments.push(a);$('#adjustModal').classList.remove('show');renderAll();openJournal();toast('Корректировка добавлена в журнал.')};
+function renderAll(keepOpen=null){
+  // Данные/сценарий изменились — начинаем новый расчётный кэш.
+  resetCalcCache();
+  renderFilters(keepOpen);renderScenarios();renderQuick();renderMap();renderLegend();showProducts(state.cat.length?state.cat:[],false);
+  if($('#journalModal').classList.contains('show'))renderJournal();
+}
+$('#journalClose').onclick=()=>$('#journalModal').classList.remove('show');$('#exportBtn').onclick=exportScenario;$('#exportJournalBtn').onclick=exportJournal;$('#journalModal').addEventListener('click',e=>{if(e.target.id==='journalModal')e.currentTarget.classList.remove('show')});$('#moveModal').addEventListener('click',e=>{if(e.target.id==='moveModal')e.currentTarget.classList.remove('show')});$('#theme').onclick=()=>{state.dark=!state.dark;document.body.classList.toggle('dark',state.dark);$('#theme').textContent=state.dark?'Светлая тема':'Темная тема'};
+ensureOrderProduct(true);
+rebuildSmallProductSet();
+const runtimeIntegrityErrors=validateRuntimeIntegrity();
+if(runtimeIntegrityErrors.length)console.warn('Capacity Planning data integrity:',runtimeIntegrityErrors);
+renderAll();
+</script>
+
+
+<script id="auth-script">
+(() => {
+  const LOGIN = 'vk_capacity';
+  const PASSWORD_SHA256 = "eae2562359f477340bcb7c61fedddadee695e982265f42c0de4bafbff4836d37";
+  const STORAGE_KEY = "capacityPlanningAuthenticated";
+  const gate = document.getElementById("authGate");
+  const form = document.getElementById("authForm");
+  const error = document.getElementById("authError");
+  const login = document.getElementById("authLogin");
+  const password = document.getElementById("authPassword");
+  const showPassword = document.getElementById("authShowPassword");
+
+  showPassword.addEventListener("click", () => {
+    const visible = password.type === "text";
+    password.type = visible ? "password" : "text";
+    showPassword.classList.toggle("is-hidden", !visible);
+    showPassword.setAttribute("aria-label", visible ? "Показать пароль" : "Скрыть пароль");
+    showPassword.setAttribute("title", visible ? "Показать пароль" : "Скрыть пароль");
+  });
+
+  async function sha256(value) {
+    const data = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return [...new Uint8Array(digest)]
+      .map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function unlock() {
+    sessionStorage.setItem(STORAGE_KEY, "1");
+    document.body.classList.remove("auth-locked");
+    gate.classList.add("hidden");
+  }
+
+  function lock() {
+    document.body.classList.add("auth-locked");
+    gate.classList.remove("hidden");
+    setTimeout(() => login.focus(), 0);
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    error.textContent = "";
+    const enteredHash = await sha256(password.value);
+
+    if (login.value.trim() === LOGIN && enteredHash === PASSWORD_SHA256) {
+      unlock();
+    } else {
+      error.textContent = "Неверный логин или пароль";
+      password.value = "";
+      password.focus();
+    }
+  });
+
+  if (sessionStorage.getItem(STORAGE_KEY) === "1") unlock();
+  else lock();
+})();
+</script>
+</body></html>
